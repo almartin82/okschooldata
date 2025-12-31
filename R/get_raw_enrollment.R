@@ -5,12 +5,18 @@
 # This file contains functions for downloading raw enrollment data from OSDE.
 #
 # Data Sources:
-# - OSDE Excel files: District and Site enrollment totals
-#   URL pattern: https://sde.ok.gov/sites/default/files/District%20Enrollment%20SY{YEAR}.xlsx
-#   URL pattern: https://sde.ok.gov/sites/default/files/Site%20Enrollment%20SY{YEAR}.xlsx
+# - Oklahoma.gov portal: Primary source for enrollment data
+#   Base URL: https://oklahoma.gov/content/dam/ok/en/osde/documents/services/student-information/state-public-enrollment-totals/
 #
-# - OklaSchools.com: Report card data with demographics and grade levels
-#   Data Matrix: https://oklaschools.com/state/matrix/
+# Data Eras:
+# - Legacy Era (2016-2021): Files with FY naming pattern (e.g., FY15-16, FY16-17)
+#   Pattern: GG_ByDIST_2F_GradeTots-FY{YY-YY}_...xls
+#   Pattern: GG_BySITE_2F_GradeTots-FY{YY-YY}-...xls
+#
+# - Modern Era (2022-2025): Files with SY naming or dated files
+#   Pattern: District%20Enrollment%20SY{YEAR}.xlsx
+#   Pattern: School%20Totals%20SY{YEAR}...xlsx
+#   Pattern: 03_DistrictEnrollment_{date}_final.xlsx
 #
 # Oklahoma District/Site ID System:
 # - District ID: County code (2 digits) + District type (1 char) + District number (3 digits)
@@ -74,15 +80,18 @@ get_raw_enr <- function(end_year) {
 #' @keywords internal
 download_osde_enrollment <- function(end_year, level) {
 
-  # Build URL - OSDE uses consistent naming pattern
-  # Example: https://sde.ok.gov/sites/default/files/District%20Enrollment%20SY2024.xlsx
+  # Build URL based on year and level
   url <- build_osde_url(end_year, level)
+
+  # Get file extension from the URL info
+  url_info <- get_enrollment_file_info(end_year, level)
+  file_ext <- url_info$extension
 
   # Create temp file for download
   tname <- tempfile(
     pattern = paste0("osde_", tolower(level), "_"),
     tmpdir = tempdir(),
-    fileext = ".xlsx"
+    fileext = file_ext
   )
 
   # Download file with error handling
@@ -154,16 +163,20 @@ download_osde_enrollment <- function(end_year, level) {
 #' Build OSDE enrollment file URL
 #'
 #' Constructs the URL for downloading enrollment data from OSDE.
+#' Handles different file naming patterns across eras.
 #'
 #' @param end_year School year end
 #' @param level "District" or "Site"
 #' @return URL string
 #' @keywords internal
 build_osde_url <- function(end_year, level) {
-  # Primary URL pattern: https://sde.ok.gov/sites/default/files/District%20Enrollment%20SY2024.xlsx
-  base_url <- "https://sde.ok.gov/sites/default/files"
-  filename <- paste0(level, "%20Enrollment%20SY", end_year, ".xlsx")
-  paste0(base_url, "/", filename)
+
+  base_url <- "https://oklahoma.gov/content/dam/ok/en/osde/documents/services/student-information/state-public-enrollment-totals"
+
+  # Get the URL pattern based on year and level
+  url_info <- get_enrollment_file_info(end_year, level)
+
+  paste0(base_url, "/", url_info$filename)
 }
 
 
@@ -176,17 +189,178 @@ build_osde_url <- function(end_year, level) {
 #' @return URL string or NULL if no alternate
 #' @keywords internal
 build_osde_url_alt <- function(end_year, level) {
-  # Alternate patterns that OSDE has used:
-  # - documents/files/ subdirectory
-  # - Different file naming (e.g., with school year range)
 
-  base_url <- "https://sde.ok.gov/sites/default/files/documents/files"
+  # Try sde.ok.gov as fallback for modern era files
+  if (end_year >= 2022) {
+    base_url <- "https://sde.ok.gov/sites/default/files"
+    filename <- paste0(level, "%20Enrollment%20SY", end_year, ".xlsx")
+    return(paste0(base_url, "/", filename))
+  }
 
-  # Try format: District Enrollment SY2024.xlsx (without encoding)
-  filename <- paste0(level, " Enrollment SY", end_year, ".xlsx")
-  encoded_filename <- utils::URLencode(filename, reserved = TRUE)
+  # No alternate for legacy era
+ NULL
+}
 
-  paste0(base_url, "/", encoded_filename)
+
+#' Get enrollment file information for a given year
+#'
+#' Returns the filename and extension for enrollment data based on the year.
+#' Handles the different naming conventions used across eras.
+#'
+#' @param end_year School year end (e.g., 2024 for 2023-24 school year)
+#' @param level "District" or "Site"
+#' @return List with filename and extension
+#' @keywords internal
+get_enrollment_file_info <- function(end_year, level) {
+
+  # Convert end_year to fiscal year format (e.g., 2016 -> "15-16")
+  fy_start <- sprintf("%02d", (end_year - 1) %% 100)
+  fy_end <- sprintf("%02d", end_year %% 100)
+  fy_label <- paste0(fy_start, "-", fy_end)
+
+  # File patterns by era
+  # Note: These are the known working URLs from oklahoma.gov enrollment page
+
+  if (end_year == 2025) {
+    # SY2025 uses a combined file format
+    if (level == "District" || level == "Site") {
+      return(list(
+        filename = "ORR%20ALL%20Grids%20Oct%201%202024%20SY2025_Format.xlsx",
+        extension = ".xlsx"
+      ))
+    }
+  }
+
+  if (end_year == 2024) {
+    if (level == "District") {
+      return(list(
+        filename = "District%20Enrollment%20SY2024.xlsx",
+        extension = ".xlsx"
+      ))
+    } else {
+      return(list(
+        filename = "School%20Totals%20SY2024%203.xlsx",
+        extension = ".xlsx"
+      ))
+    }
+  }
+
+  if (end_year == 2023) {
+    if (level == "District") {
+      return(list(
+        filename = "03_DistrictEnrollment_11-30-2022%20135728_final.xlsx",
+        extension = ".xlsx"
+      ))
+    } else {
+      return(list(
+        filename = "01_SchoolSiteTotals_11-30-2022%20135728_final.xlsx",
+        extension = ".xlsx"
+      ))
+    }
+  }
+
+  if (end_year == 2022) {
+    if (level == "District") {
+      return(list(
+        filename = "03_DistrictEnrollment_12-14-2021%20172057.xlsx",
+        extension = ".xlsx"
+      ))
+    } else {
+      return(list(
+        filename = "01_SchoolSiteTotals_12-14-2021%20173848.xlsx",
+        extension = ".xlsx"
+      ))
+    }
+  }
+
+  if (end_year == 2021) {
+    if (level == "District") {
+      return(list(
+        filename = "GG_ByDIST_2FCH_GradeTots-FY20-21_Public.xlsx",
+        extension = ".xlsx"
+      ))
+    } else {
+      return(list(
+        filename = "GG_BySITE_2FCH_GradeTots-FY120-21_Public%20.xlsx",
+        extension = ".xlsx"
+      ))
+    }
+  }
+
+  if (end_year == 2020) {
+    if (level == "District") {
+      # FY19-20 uses comparison file as main source (has enrollment data)
+      return(list(
+        filename = "GG_ByDIST_2T_Compare_FYC_FYP_2019-12-06_FY1920_0.xlsx",
+        extension = ".xlsx"
+      ))
+    } else {
+      return(list(
+        filename = "GG_BySITE_2FCH_GradeTots-FY1920_Public_2019-12-09.xlsx",
+        extension = ".xlsx"
+      ))
+    }
+  }
+
+  if (end_year == 2019) {
+    if (level == "District") {
+      return(list(
+        filename = "GG_ByDIST_2FCH_GradeTots-FY18-19_Public_2019-01-18.xls",
+        extension = ".xls"
+      ))
+    } else {
+      return(list(
+        filename = "GG_BySITE_2FCH_GradeTots-FY18-19_Public_2019-01-18.xls",
+        extension = ".xls"
+      ))
+    }
+  }
+
+  if (end_year == 2018) {
+    # FY17-18 has site files but district files use comparison format
+    if (level == "District") {
+      return(list(
+        filename = "GG_ByDIST_2T_Compare_FYC_FYP_2017-12-06.xlsx",
+        extension = ".xlsx"
+      ))
+    } else {
+      return(list(
+        filename = "GG_BySITE_2F_GradeTots-FY17-18-Public_2017-12-06.xls",
+        extension = ".xls"
+      ))
+    }
+  }
+
+  if (end_year == 2017) {
+    if (level == "District") {
+      return(list(
+        filename = "GG_ByDIST_2F_GradeTots-FY16-17_Public_2016-12-02_0.xls",
+        extension = ".xls"
+      ))
+    } else {
+      return(list(
+        filename = "GG_BySITE_2F_GradeTots-FY16-17-Public_2016-12-02.xls",
+        extension = ".xls"
+      ))
+    }
+  }
+
+  if (end_year == 2016) {
+    if (level == "District") {
+      return(list(
+        filename = "GG_ByDIST_2F_GradeTots-FY15-16_2015-12-18.xls",
+        extension = ".xls"
+      ))
+    } else {
+      return(list(
+        filename = "GG_BySITE_2F_GradeTots-FY15-16-Public_2015-12-18.xls",
+        extension = ".xls"
+      ))
+    }
+  }
+
+  # Default fallback for unknown years
+  stop(paste("No URL pattern defined for year", end_year))
 }
 
 

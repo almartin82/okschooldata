@@ -47,9 +47,19 @@ The package follows the same patterns as txschooldata:
 
 ## Data Source URLs
 
-Primary Excel file pattern:
-- District: `https://sde.ok.gov/sites/default/files/District%20Enrollment%20SY{YEAR}.xlsx`
-- Site: `https://sde.ok.gov/sites/default/files/Site%20Enrollment%20SY{YEAR}.xlsx`
+Primary data source (oklahoma.gov):
+- Base URL: `https://oklahoma.gov/content/dam/ok/en/osde/documents/services/student-information/state-public-enrollment-totals/`
+- State Enrollment Totals Page: https://oklahoma.gov/education/services/student-information/state-public-enrollment-totals.html
+
+### Data Eras
+
+**Legacy Era (2016-2021)**: Files use FY naming pattern
+- District: `GG_ByDIST_2F_GradeTots-FY{YY-YY}_...xls`
+- Site: `GG_BySITE_2F_GradeTots-FY{YY-YY}-...xls`
+
+**Modern Era (2022-2025)**: Files use SY naming or dated format
+- District: `District%20Enrollment%20SY{YEAR}.xlsx` or `03_DistrictEnrollment_{date}_final.xlsx`
+- Site: `School%20Totals%20SY{YEAR}...xlsx` or `01_SchoolSiteTotals_{date}_final.xlsx`
 
 Supplementary data:
 - OklaSchools.com Data Matrix: https://oklaschools.com/state/matrix/
@@ -57,7 +67,8 @@ Supplementary data:
 
 ## Known Issues
 
-1. OSDE website can be slow or unresponsive
-2. SSL certificate issues may occur - use httr with appropriate settings
+1. OSDE website (sde.ok.gov) can be slow or unresponsive - prefer oklahoma.gov URLs
+2. SSL certificate issues may occur with sde.ok.gov - oklahoma.gov is more reliable
 3. Column names vary between years - use flexible column mapping
-4. Some older files may not be available or may have moved
+4. File naming patterns changed between eras - URL builder handles this automatically
+5. Some years (2018, 2020) use comparison files instead of standard grade totals files

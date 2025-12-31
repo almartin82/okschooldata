@@ -7,6 +7,9 @@ template:
 home:
   title: okschooldata - Oklahoma School Enrollment Data
   description: An R package for fetching and analyzing Oklahoma public school enrollment data from OSDE.
+  links:
+    - text: "Part of the 50 State Schooldata Family"
+      href: https://github.com/almartin82/njschooldata
 
 navbar:
   structure:

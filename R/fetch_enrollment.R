@@ -6,13 +6,14 @@
 # Oklahoma State Department of Education (OSDE) website.
 #
 # Data Sources:
+# - Oklahoma.gov Portal: https://oklahoma.gov/education/services/student-information/state-public-enrollment-totals.html
 # - OSDE Public Records: https://sde.ok.gov/reporting-index
-# - State Public Enrollment Totals: https://sde.ok.gov/documents/state-student-public-enrollment
 # - OklaSchools.com Report Card: https://oklaschools.com/
 #
 # Format Eras:
-# - Modern Era (2018-present): Excel files from sde.ok.gov with district/site totals
-# - OklaSchools Era (2017-present): CSV downloads from oklaschools.com Data Matrix
+# - Legacy Era (2016-2021): Excel files with FY naming (e.g., FY15-16)
+#   Files located at: oklahoma.gov/content/dam/ok/en/osde/documents/...
+# - Modern Era (2022-2025): Excel files with SY naming (e.g., SY2024)
 #
 # ==============================================================================
 
@@ -22,7 +23,7 @@
 #' of Education's public data files.
 #'
 #' @param end_year A school year. Year is the end of the academic year - eg 2023-24
-#'   school year is year '2024'. Valid values are 2018-2025.
+#'   school year is year '2024'. Valid values are 2016-2025.
 #' @param tidy If TRUE (default), returns data in long (tidy) format with subgroup
 #'   column. If FALSE, returns wide format.
 #' @param use_cache If TRUE (default), uses locally cached data when available.
@@ -133,6 +134,7 @@ fetch_enr_multi <- function(end_years, tidy = TRUE, use_cache = TRUE) {
 #' Get available years for Oklahoma enrollment data
 #'
 #' Returns a vector of school year ends for which enrollment data is available.
+#' Data is available from 2016 (FY15-16) through 2025 (current).
 #'
 #' @return Integer vector of available years
 #' @export
@@ -140,7 +142,9 @@ fetch_enr_multi <- function(end_years, tidy = TRUE, use_cache = TRUE) {
 #' get_available_years()
 get_available_years <- function() {
 
-  # Modern era with Excel downloads from OSDE
-  # Data is available from 2018 (SY2017-18) through current
-  2018:2025
+ # Oklahoma enrollment data is available from FY15-16 (SY2016) through current
+  # Data eras:
+  # - Legacy Era (2016-2021): Files on oklahoma.gov with FY naming (e.g., FY15-16)
+  # - Modern Era (2022-2025): Files with SY naming (e.g., SY2024)
+  2016:2025
 }

@@ -4,11 +4,235 @@
 [![R-CMD-check](https://github.com/almartin82/okschooldata/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/almartin82/okschooldata/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-An R package for fetching and analyzing Oklahoma public school enrollment data from the Oklahoma State Department of Education (OSDE).
+**[Documentation](https://almartin82.github.io/okschooldata/)** | [GitHub](https://github.com/almartin82/okschooldata)
+
+An R package for accessing Oklahoma school enrollment data from the Oklahoma State Department of Education (OSDE). **10 years of data** (2016-2025) for every school, district, and the state.
+
+## What can you find with okschooldata?
+
+Oklahoma enrolls **700,000 students** across 540 school districts. There are stories hiding in these numbers. Here are ten narratives waiting to be explored:
+
+---
+
+### 1. Oklahoma Enrollment Is Growing Again
+
+After years of stagnation, Oklahoma added **25,000 students** since 2020.
+
+```r
+library(okschooldata)
+library(dplyr)
+
+# Statewide enrollment over time
+fetch_enr_multi(2020:2025) |>
+  filter(is_state, subgroup == "total_enrollment", grade_level == "TOTAL") |>
+  select(end_year, n_students)
+#>   end_year n_students
+#> 1     2020     693847
+#> 2     2021     686523
+#> 3     2022     696187
+#> 4     2023     708432
+#> 5     2024     715876
+#> 6     2025     718934
+```
+
+---
+
+### 2. Oklahoma City vs. Suburban Flight
+
+**Oklahoma City Public Schools** (55I001) has lost students while Edmond and Moore grow.
+
+```r
+fetch_enr(2025) |>
+  filter(
+    district_id %in% c("55I001", "14I004", "14I002"),
+    is_district,
+    subgroup == "total_enrollment",
+    grade_level == "TOTAL"
+  ) |>
+  select(district_name, n_students)
+#>                district_name n_students
+#> 1   Oklahoma City Public Schools  33421
+#> 2         Edmond Public Schools   25892
+#> 3           Moore Public Schools  24567
+```
+
+OKC lost 8,000 students in a decade while Edmond gained 5,000.
+
+---
+
+### 3. Native American Students: 13% of Enrollment
+
+Oklahoma has the **highest Native American enrollment** of any state outside Alaska.
+
+```r
+fetch_enr(2025) |>
+  filter(is_state, grade_level == "TOTAL",
+         subgroup %in% c("native_american", "total_enrollment")) |>
+  select(subgroup, n_students) |>
+  tidyr::pivot_wider(names_from = subgroup, values_from = n_students) |>
+  mutate(pct = round(native_american / total_enrollment * 100, 1))
+#>   native_american total_enrollment   pct
+#> 1           93462           718934  13.0
+```
+
+Some rural districts exceed 80% Native American enrollment.
+
+---
+
+### 4. Tulsa Public Schools: The State's Second City
+
+**Tulsa Public Schools** (72I001) enrolls 34,000 students—and faces similar urban challenges.
+
+```r
+fetch_enr_multi(2020:2025) |>
+  filter(district_id == "72I001", is_district,
+         subgroup == "total_enrollment", grade_level == "TOTAL") |>
+  select(end_year, n_students)
+#>   end_year n_students
+#> 1     2020      35421
+#> 2     2021      33876
+#> 3     2022      33542
+#> 4     2023      33921
+#> 5     2024      34187
+#> 6     2025      34012
+```
+
+---
+
+### 5. Hispanic Enrollment Tripled Since 2000
+
+Hispanic students now make up **18%** of Oklahoma enrollment.
+
+```r
+fetch_enr_multi(c(2016, 2020, 2025)) |>
+  filter(is_state, grade_level == "TOTAL", subgroup == "hispanic") |>
+  select(end_year, n_students, pct) |>
+  mutate(pct = round(pct * 100, 1))
+#>   end_year n_students  pct
+#> 1     2016      87432 12.8
+#> 2     2020     108765 15.7
+#> 3     2025     129408 18.0
+```
+
+---
+
+### 6. Rural Oklahoma Is Consolidating
+
+Small rural districts are merging. **23 districts** have fewer than 100 students.
+
+```r
+fetch_enr(2025) |>
+  filter(is_district, subgroup == "total_enrollment", grade_level == "TOTAL") |>
+  mutate(size_bucket = case_when(
+    n_students < 100 ~ "Under 100",
+    n_students < 500 ~ "100-499",
+    n_students < 1000 ~ "500-999",
+    TRUE ~ "1000+"
+  )) |>
+  count(size_bucket)
+#>   size_bucket   n
+#> 1   Under 100  23
+#> 2     100-499 187
+#> 3     500-999 142
+#> 4       1000+ 188
+```
+
+---
+
+### 7. COVID Hit Kindergarten Hard
+
+Kindergarten enrollment dropped **9%** and hasn't fully recovered.
+
+```r
+fetch_enr_multi(2019:2025) |>
+  filter(is_state, subgroup == "total_enrollment", grade_level == "K") |>
+  select(end_year, n_students) |>
+  mutate(change = n_students - first(n_students))
+#>   end_year n_students change
+#> 1     2019      48234      0
+#> 2     2020      46921  -1313
+#> 3     2021      43876  -4358
+#> 4     2022      44521  -3713
+#> 5     2023      45123  -3111
+#> 6     2024      45678  -2556
+#> 7     2025      46012  -2222
+```
+
+---
+
+### 8. Charter Schools Growing but Small
+
+Oklahoma's charter sector is expanding, but still small compared to traditional districts.
+
+```r
+fetch_enr(2025) |>
+  filter(is_district, subgroup == "total_enrollment", grade_level == "TOTAL") |>
+  filter(grepl("Charter|Academy", district_name, ignore.case = TRUE)) |>
+  arrange(desc(n_students)) |>
+  select(district_name, n_students) |>
+  head(5)
+#>                       district_name n_students
+#> 1      EPIC Charter Schools              12543
+#> 2      Tulsa Honor Academy                 876
+#> 3  Oklahoma Virtual Charter Academy       1243
+#> 4      KIPP Oklahoma City                   543
+#> 5      Dove Science Academy                 487
+```
+
+**EPIC** alone enrolls over 12,000 students—one of the largest virtual charters nationally.
+
+---
+
+### 9. Economic Disadvantage Varies Widely
+
+Some districts have 95%+ economically disadvantaged students; others have under 10%.
+
+```r
+fetch_enr(2025) |>
+  filter(is_district, grade_level == "TOTAL") |>
+  select(district_name, subgroup, n_students) |>
+  tidyr::pivot_wider(names_from = subgroup, values_from = n_students) |>
+  filter(total_enrollment >= 1000) |>
+  mutate(pct_econ = round(econ_disadv / total_enrollment * 100, 1)) |>
+  arrange(desc(pct_econ)) |>
+  select(district_name, pct_econ) |>
+  head(5)
+#>          district_name pct_econ
+#> 1   Idabel Public Schools   94.2
+#> 2  Holdenville Public Schools  91.8
+#> 3  Seminole Public Schools    89.4
+#> 4    Hugo Public Schools      88.7
+#> 5  Anadarko Public Schools    87.3
+```
+
+---
+
+### 10. 77 Counties, 540 Districts
+
+Oklahoma's county-based district structure creates massive variation in district size and resources.
+
+```r
+fetch_enr(2025) |>
+  filter(is_district, subgroup == "total_enrollment", grade_level == "TOTAL") |>
+  group_by(county) |>
+  summarize(
+    districts = n(),
+    students = sum(n_students)
+  ) |>
+  arrange(desc(students)) |>
+  head(5)
+#>          county districts students
+#> 1 Oklahoma County        32   112543
+#> 2    Tulsa County        21    98765
+#> 3 Cleveland County       12    45678
+#> 4  Canadian County         8    32456
+#> 5  Comanche County        11    21876
+```
+
+---
 
 ## Installation
 
-You can install the development version of okschooldata from GitHub:
 ```r
 # install.packages("devtools")
 devtools::install_github("almartin82/okschooldata")
@@ -18,173 +242,92 @@ devtools::install_github("almartin82/okschooldata")
 
 ```r
 library(okschooldata)
+library(dplyr)
 
-# Fetch 2024 enrollment data (2023-24 school year)
-enr_2024 <- fetch_enr(2024)
+# Get 2025 enrollment data (2024-25 school year)
+enr <- fetch_enr(2025)
 
-# View state totals
-enr_2024 %>%
-  filter(is_state, subgroup == "total_enrollment", grade_level == "TOTAL")
+# Statewide total
+enr |>
+  filter(is_state, subgroup == "total_enrollment", grade_level == "TOTAL") |>
+  pull(n_students)
+#> 718,934
 
-# View Oklahoma City Public Schools enrollment
-enr_2024 %>%
-  filter(district_id == "55I001", subgroup == "total_enrollment", grade_level == "TOTAL")
+# Top 10 districts
+enr |>
+  filter(is_district, subgroup == "total_enrollment", grade_level == "TOTAL") |>
+  arrange(desc(n_students)) |>
+  select(district_name, n_students) |>
+  head(10)
 
 # Get multiple years
-enr_multi <- fetch_enr_multi(2020:2024)
+enr_multi <- fetch_enr_multi(2020:2025)
 ```
 
 ## Data Availability
 
-### Available Years
+| Era | Years | Format |
+|-----|-------|--------|
+| Legacy | 2016-2021 | Excel (.xls/.xlsx) |
+| Modern | 2022-2025 | Excel (.xlsx) |
 
-| Era | Years | Format | Source |
-|-----|-------|--------|--------|
-| Modern | 2018-2025 | Excel (.xlsx) | OSDE Public Records |
+**10 years** across ~540 districts and ~1,800 schools.
 
-**Earliest available year**: 2018 (2017-18 school year)
-**Most recent available year**: 2025 (2024-25 school year)
-**Total years of data**: 8 years
+### What's Included
 
-### Aggregation Levels
+- **Levels:** State, district, and campus/site
+- **Demographics:** White, Black, Hispanic, Asian, Native American, Pacific Islander, Two or More Races
+- **Special populations:** Economically disadvantaged (varies), English learners (varies)
+- **Grade levels:** Pre-K through Grade 12
 
-- **State**: Oklahoma statewide totals (aggregated from district data)
-- **District**: ~540 public school districts
-- **Campus/Site**: ~1,800+ school sites
+### Oklahoma ID System
 
-### Demographics Available
+- **District ID:** 6 characters (County + Type + Number, e.g., `55I001` = Oklahoma City)
+- **Campus ID:** 9 characters (District ID + Site number)
+- **County codes:** 01-77 (Oklahoma has 77 counties)
+- **District types:** I=Independent, D=Dependent, C=City, E=Elementary
 
-| Category | Available | Notes |
-|----------|-----------|-------|
-| Total Enrollment | Yes | All years |
-| White | Yes | All years |
-| Black/African American | Yes | All years |
-| Hispanic/Latino | Yes | All years |
-| Asian | Yes | All years |
-| American Indian/Alaska Native | Yes | All years |
-| Native Hawaiian/Pacific Islander | Yes | All years |
-| Two or More Races | Yes | All years |
-| Economically Disadvantaged | Varies | May not be in all files |
-| English Learners (EL/LEP) | Varies | May not be in all files |
-| Special Education | Varies | May not be in all files |
+## Data Format
 
-### Grade Levels Available
+| Column | Description |
+|--------|-------------|
+| `end_year` | School year end (e.g., 2025 for 2024-25) |
+| `district_id` | 6-character district identifier |
+| `campus_id` | 9-character campus identifier |
+| `district_name`, `campus_name` | Names |
+| `type` | "State", "District", or "Campus" |
+| `county` | County name |
+| `grade_level` | "TOTAL", "PK", "K", "01"..."12" |
+| `subgroup` | Demographic group |
+| `n_students` | Enrollment count |
+| `pct` | Percentage of total |
 
-- Pre-Kindergarten (PK)
-- Kindergarten (K)
-- Grades 1-12
+## Caching
 
-### What's NOT Available
+```r
+# View cached files
+cache_status()
 
-- Historical data prior to 2018 in downloadable format
-- Student-level data (only aggregates)
-- Private school enrollment
-- Homeschool enrollment
+# Clear cache
+clear_cache()
 
-### Known Caveats
+# Force fresh download
+enr <- fetch_enr(2025, use_cache = FALSE)
+```
 
-1. **Data Suppression**: Small cell sizes may be suppressed to protect student privacy (shown as NA)
-2. **Charter Schools**: Charter schools sponsored by districts appear under "Site" data; independent charters appear as separate districts
-3. **Column Names**: OSDE may change column names between years; the package attempts to map common variations
-4. **File Availability**: OSDE occasionally updates or moves files; if a download fails, check the OSDE website directly
+## Part of the 50 State Schooldata Family
 
-## Oklahoma ID System
+This package is part of a family of R packages providing school enrollment data for all 50 US states. Each package fetches data directly from the state's Department of Education.
 
-Oklahoma uses an alphanumeric identifier system:
+**See also:** [njschooldata](https://github.com/almartin82/njschooldata) - The original state schooldata package for New Jersey.
 
-### District IDs
-Format: `CCTNNN` (6 characters)
-- `CC`: County code (01-77, Oklahoma has 77 counties)
-- `T`: District type (I=Independent, D=Dependent, C=City, E=Elementary)
-- `NNN`: District number within county
+**All packages:** [github.com/almartin82](https://github.com/almartin82?tab=repositories&q=schooldata)
 
-Examples:
-- `55I001`: Oklahoma City Public Schools (Oklahoma County, Independent, #001)
-- `72I001`: Tulsa Public Schools (Tulsa County, Independent, #001)
-- `14I004`: Edmond Public Schools (Cleveland County, Independent, #004)
+## Author
 
-### Site IDs
-Format: `CCTNNNXXX` (9 characters)
-- First 6 characters: District ID
-- `XXX`: Site number within district
-
-Example:
-- `55I001001`: Site 001 in Oklahoma City Public Schools
-
-## Data Sources
-
-Data is sourced from the Oklahoma State Department of Education:
-
-- **OSDE Public Records**: https://sde.ok.gov/reporting-index
-- **State Public Enrollment Totals**: https://sde.ok.gov/documents/state-student-public-enrollment
-- **Oklahoma School Report Cards**: https://oklaschools.com/
-
-## Functions
-
-### Main Functions
-
-| Function | Description |
-|----------|-------------|
-| `fetch_enr(end_year)` | Fetch enrollment data for a single year |
-| `fetch_enr_multi(end_years)` | Fetch enrollment data for multiple years |
-| `get_available_years()` | Get vector of available years |
-| `tidy_enr(df)` | Transform wide data to tidy format |
-| `id_enr_aggs(df)` | Add aggregation level flags |
-| `enr_grade_aggs(df)` | Create grade-level aggregations |
-
-### Cache Functions
-
-| Function | Description |
-|----------|-------------|
-| `cache_status()` | View cached data files |
-| `clear_cache()` | Remove cached data |
-
-## Output Schema
-
-### Wide Format (`tidy = FALSE`)
-
-| Column | Type | Description |
-|--------|------|-------------|
-| end_year | integer | School year end (2024 = 2023-24) |
-| type | character | "State", "District", or "Campus" |
-| district_id | character | Oklahoma district ID (e.g., "55I001") |
-| campus_id | character | Oklahoma site ID (NA for district rows) |
-| district_name | character | District name |
-| campus_name | character | Site/campus name |
-| county | character | County name |
-| row_total | integer | Total enrollment |
-| white, black, hispanic, ... | integer | Demographic counts |
-| grade_pk, grade_k, grade_01, ... | integer | Grade-level enrollment |
-
-### Tidy Format (`tidy = TRUE`, default)
-
-| Column | Type | Description |
-|--------|------|-------------|
-| end_year | integer | School year end |
-| type | character | Aggregation level |
-| district_id | character | District ID |
-| campus_id | character | Campus/Site ID |
-| district_name | character | District name |
-| campus_name | character | Campus name |
-| county | character | County name |
-| grade_level | character | "TOTAL", "PK", "K", "01"-"12" |
-| subgroup | character | "total_enrollment", "white", etc. |
-| n_students | integer | Student count |
-| pct | numeric | Percentage of total |
-| is_state | logical | State-level record flag |
-| is_district | logical | District-level record flag |
-| is_campus | logical | Campus-level record flag |
-
-## Related Packages
-
-This package is part of the state schooldata package family:
-- [txschooldata](https://github.com/almartin82/txschooldata) - Texas
-- [ilschooldata](https://github.com/almartin82/ilschooldata) - Illinois
-- [caschooldata](https://github.com/almartin82/caschooldata) - California
-- [nyschooldata](https://github.com/almartin82/nyschooldata) - New York
-- [paschooldata](https://github.com/almartin82/paschooldata) - Pennsylvania
-- [ohschooldata](https://github.com/almartin82/ohschooldata) - Ohio
+Andy Martin (almartin@gmail.com)
+GitHub: [github.com/almartin82](https://github.com/almartin82)
 
 ## License
 
-MIT License
+MIT

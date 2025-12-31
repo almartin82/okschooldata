@@ -27,14 +27,15 @@ test_that("get_available_years returns valid range", {
 
   expect_true(is.numeric(years))
   expect_true(length(years) > 0)
-  expect_true(min(years) >= 2018)
+  expect_true(min(years) >= 2016)
   expect_true(max(years) <= 2025)
+  expect_equal(length(years), 10)  # 2016-2025 = 10 years
 })
 
 test_that("fetch_enr validates year parameter", {
   expect_error(fetch_enr(2000), "end_year must be between")
   expect_error(fetch_enr(2030), "end_year must be between")
-  expect_error(fetch_enr(2010), "end_year must be between")
+  expect_error(fetch_enr(2015), "end_year must be between")  # 2015 is before available range
 })
 
 test_that("fetch_enr_multi validates year parameters", {
@@ -43,14 +44,38 @@ test_that("fetch_enr_multi validates year parameters", {
 })
 
 test_that("build_osde_url constructs valid URLs", {
+  # Modern era (2024)
   url <- build_osde_url(2024, "District")
-  expect_true(grepl("sde.ok.gov", url))
-  expect_true(grepl("2024", url))
-  expect_true(grepl("District", url))
+  expect_true(grepl("oklahoma.gov", url))
+  expect_true(grepl("SY2024", url))
   expect_true(grepl("\\.xlsx", url))
 
   url_site <- build_osde_url(2024, "Site")
-  expect_true(grepl("Site", url_site))
+  expect_true(grepl("School", url_site))  # Site files are named "School Totals"
+
+  # Legacy era (2016)
+  url_legacy <- build_osde_url(2016, "District")
+  expect_true(grepl("oklahoma.gov", url_legacy))
+  expect_true(grepl("FY15-16", url_legacy))
+  expect_true(grepl("\\.xls", url_legacy))
+
+  url_legacy_site <- build_osde_url(2016, "Site")
+  expect_true(grepl("SITE", url_legacy_site))
+})
+
+test_that("get_enrollment_file_info returns correct file info for each year", {
+  # Test all available years have defined URL patterns
+  years <- get_available_years()
+  for (yr in years) {
+    info_dist <- get_enrollment_file_info(yr, "District")
+    expect_true(!is.null(info_dist$filename))
+    expect_true(!is.null(info_dist$extension))
+    expect_true(info_dist$extension %in% c(".xls", ".xlsx"))
+
+    info_site <- get_enrollment_file_info(yr, "Site")
+    expect_true(!is.null(info_site$filename))
+    expect_true(!is.null(info_site$extension))
+  }
 })
 
 test_that("get_cache_dir returns valid path", {
