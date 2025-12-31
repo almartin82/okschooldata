@@ -5,6 +5,9 @@
 # This file contains functions for transforming enrollment data from wide
 # format to long (tidy) format and identifying aggregation levels.
 #
+# IMPORTANT: This package uses ONLY Alaska DEED data sources.
+# No federal data sources (NCES, Urban Institute, etc.) are used.
+#
 # ==============================================================================
 
 #' Tidy enrollment data

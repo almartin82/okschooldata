@@ -5,6 +5,9 @@
 #' including October 1 counts by school, district, grade level, and demographic
 #' groups, and transforming it into tidy format for analysis.
 #'
+#' IMPORTANT: This package uses ONLY Alaska DEED data sources. No federal data
+#' sources (NCES CCD, Urban Institute API, etc.) are used.
+#'
 #' @section Main functions:
 #' \describe{
 #'   \item{\code{\link{fetch_enr}}}{Fetch enrollment data for a school year}
@@ -13,6 +16,7 @@
 #'   \item{\code{\link{id_enr_aggs}}}{Add aggregation level flags}
 #'   \item{\code{\link{enr_grade_aggs}}}{Create grade-level aggregations}
 #'   \item{\code{\link{get_available_years}}}{View available year range}
+#'   \item{\code{\link{import_local_deed_enrollment}}}{Import locally downloaded DEED files}
 #' }
 #'
 #' @section Cache functions:
@@ -21,22 +25,22 @@
 #'   \item{\code{\link{clear_cache}}}{Remove cached data files}
 #' }
 #'
-#' @section ID System:
-#' Alaska uses a hierarchical ID system:
+#' @section Data Source:
+#' All data is sourced directly from Alaska DEED:
 #' \itemize{
-#'   \item State FIPS: 02
-#'   \item District IDs (LEAID): 02XXXXX (NCES LEA ID format)
-#'   \item School IDs (SCHID): 02XXXXXXXXXX (NCES School ID format)
+#'   \item DEED Data Center: \url{https://education.alaska.gov/data-center}
+#'   \item DEED Statistics: \url{https://education.alaska.gov/stats}
+#'   \item Enrollment Files: \url{https://education.alaska.gov/Stats/enrollment/}
 #' }
-#' Alaska has approximately 54 school districts and 500 schools.
 #'
-#' @section Data Sources:
-#' Data is sourced from:
+#' The package downloads two Excel files for each school year:
 #' \itemize{
-#'   \item NCES CCD (primary): \url{https://nces.ed.gov/ccd/}
-#'   \item Alaska DEED Data Center: \url{https://education.alaska.gov/data-center}
-#'   \item Alaska DEED Statistics: \url{https://education.alaska.gov/stats}
+#'   \item Enrollment by School by Grade (grade-level counts)
+#'   \item Enrollment by School by Ethnicity (demographic breakdowns)
 #' }
+#'
+#' @section Data Availability:
+#' Available years: 2019-2025 (Excel files from DEED Statistics Portal)
 #'
 #' @section Demographics:
 #' Alaska has unique demographic composition:
@@ -44,7 +48,7 @@
 #'   \item 22% Alaska Native/American Indian (highest in US)
 #'   \item 3% Native Hawaiian/Pacific Islander (among highest in US)
 #'   \item Approximately 131,000 total students
-#'   \item 53 school districts
+#'   \item 53 school districts (plus Mt. Edgecumbe High School)
 #' }
 #'
 #' @docType package

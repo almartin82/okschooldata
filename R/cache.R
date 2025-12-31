@@ -3,7 +3,10 @@
 # ==============================================================================
 #
 # This file contains functions for caching downloaded data locally to avoid
-# repeated downloads from Alaska DEED or NCES.
+# repeated downloads from Alaska DEED.
+#
+# IMPORTANT: This package uses ONLY Alaska DEED data sources.
+# No federal data sources (NCES, Urban Institute, etc.) are used.
 #
 # ==============================================================================
 

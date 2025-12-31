@@ -15,6 +15,7 @@ reference:
       - fetch_enr
       - fetch_enr_multi
       - get_available_years
+      - import_local_deed_enrollment
 
   - title: "Transform Data"
     desc: "Functions for reshaping and annotating data"
@@ -45,7 +46,9 @@ articles:
 
 home:
   links:
+    - text: "Part of the 50 State Schooldata Family"
+      href: https://github.com/almartin82/njschooldata
     - text: Alaska DEED Data Center
       href: https://education.alaska.gov/data-center
-    - text: NCES CCD
-      href: https://nces.ed.gov/ccd/
+    - text: Alaska DEED Statistics
+      href: https://education.alaska.gov/stats

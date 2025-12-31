@@ -3,24 +3,27 @@
 # ==============================================================================
 #
 # This file contains functions for downloading enrollment data from the
-# Alaska Department of Education and Early Development (DEED) and NCES.
+# Alaska Department of Education and Early Development (DEED).
+#
+# IMPORTANT: This package uses ONLY Alaska DEED data sources.
+# No federal data sources (NCES, Urban Institute, etc.) are used.
 #
 # ==============================================================================
 
 #' Fetch Alaska enrollment data
 #'
-#' Downloads and processes enrollment data from Alaska DEED and NCES CCD.
+#' Downloads and processes enrollment data from Alaska DEED.
 #' Data includes October 1 counts by school, district, grade level, and
 #' demographic groups.
 #'
 #' @param end_year A school year. Year is the end of the academic year - eg 2023-24
-#'   school year is year '2024'. Valid values are 1997-2025.
+#'   school year is year '2024'. Valid values are 2019-2025.
 #' @param tidy If TRUE (default), returns data in long (tidy) format with subgroup
 #'   column. If FALSE, returns wide format.
 #' @param use_cache If TRUE (default), uses locally cached data when available.
 #'   Set to FALSE to force re-download from source.
 #' @return Data frame with enrollment data. Wide format includes columns for
-#'   district_id, campus_id, names, and enrollment counts by demographic/grade.
+#'   district_name, school_name, and enrollment counts by demographic/grade.
 #'   Tidy format pivots these counts into subgroup and grade_level columns.
 #' @export
 #' @examples
@@ -58,7 +61,7 @@ fetch_enr <- function(end_year, tidy = TRUE, use_cache = TRUE) {
     return(read_cache(end_year, cache_type))
   }
 
-  # Get raw data
+  # Get raw data from DEED
   raw <- get_raw_enr(end_year)
 
   # Process to standard schema

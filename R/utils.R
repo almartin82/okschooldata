@@ -1,6 +1,11 @@
 # ==============================================================================
 # Utility Functions
 # ==============================================================================
+#
+# IMPORTANT: This package uses ONLY Alaska DEED data sources.
+# No federal data sources (NCES, Urban Institute, etc.) are used.
+#
+# ==============================================================================
 
 #' Pipe operator
 #'
@@ -40,106 +45,44 @@ safe_numeric <- function(x) {
 
 #' Get available years for Alaska enrollment data
 #'
-#' Returns the range of years for which enrollment data is available.
+#' Returns the range of years for which enrollment data is available
+#' from Alaska DEED's statistics portal.
 #'
-#' @return Named list with min_year and max_year
+#' Data is downloaded directly from:
+#' https://education.alaska.gov/Stats/enrollment/
+#'
+#' @return Named list with min_year, max_year, and description
 #' @export
 #' @examples
 #' get_available_years()
 get_available_years <- function() {
   list(
-    min_year = 1997,
+    min_year = 2019,
     max_year = 2025,
     description = paste(
       "Alaska DEED enrollment data availability:",
-      "- 1997-2010: School Ethnicity Reports (PDF, limited automation)",
-      "- 2011-2025: NCES CCD (Common Core of Data) with detailed breakdowns",
+      "- 2019-2025: Excel files from DEED Statistics Portal",
+      "  (Enrollment by School by Grade & Enrollment by School by Ethnicity)",
+      "",
+      "Data source: https://education.alaska.gov/Stats/enrollment/",
+      "",
+      "Note: Earlier years may be available as PDF reports but are not",
+      "currently supported for automated download.",
       sep = "\n"
     )
   )
 }
 
 
-#' Build Alaska DEED URL for enrollment data
+#' Get Alaska district reference data
 #'
-#' Constructs URL for Alaska DEED enrollment data files.
-#'
-#' @param end_year School year end (e.g., 2024 for 2023-24)
-#' @param file_type Type of file to download
-#' @return URL string
-#' @keywords internal
-build_deed_url <- function(end_year, file_type = "ethnicity") {
-  # Alaska DEED School Ethnicity Reports
-  # Pattern: https://education.alaska.gov/stats/SchoolEthnicity/YYYY_School_Ethnicity_Report.pdf
-  if (file_type == "ethnicity") {
-    return(paste0(
-      "https://education.alaska.gov/stats/SchoolEthnicity/",
-      end_year, "_School_Ethnicity_Report.pdf"
-    ))
-  }
-
-  # ADM data
-  if (file_type == "adm") {
-    return("https://education.alaska.gov/stats/QuickFacts/ADM.pdf")
-  }
-
-  stop("Unknown file_type: ", file_type)
-}
-
-
-#' Build NCES CCD URL for enrollment data
-#'
-#' Constructs URL for NCES Common Core of Data files.
-#' CCD is the primary source for detailed enrollment data by state.
-#'
-#' @param end_year School year end (e.g., 2024 for 2023-24)
-#' @param level Data level: "school" or "district"
-#' @return URL string
-#' @keywords internal
-build_nces_url <- function(end_year, level = "school") {
-  # NCES CCD files follow patterns like:
-  # School: ccd_sch_052_YYYY_w_1a_MMDDYY.csv
-  # District: ccd_lea_052_YYYY_w_1a_MMDDYY.csv
-
-  # For recent years, use direct NCES API approach
-  # Alaska FIPS code is 02
-
-  # NCES provides data through their ELSI table generator
-  # We'll use the direct download approach via nces.ed.gov/ccd/files.asp
-
-
-  # Base URL for CCD flat files
-  base_url <- "https://nces.ed.gov/ccd/Data/zip"
-
-  # Construct school year string (e.g., 2023-24 for end_year 2024)
-  start_year <- end_year - 1
-  sy_short <- paste0(substr(as.character(start_year), 3, 4),
-                     substr(as.character(end_year), 3, 4))
-
-  # Membership file patterns vary by year
-  # Recent years use ccd_sch_052_YYYY_MMDDYY.zip format
-  if (level == "school") {
-    # School-level membership data
-    url <- paste0(base_url, "/ccd_sch_052_", start_year, end_year %% 100, "_w_1a_*.zip")
-  } else {
-    # District-level membership data
-    url <- paste0(base_url, "/ccd_lea_052_", start_year, end_year %% 100, "_w_1a_*.zip")
-  }
-
-  url
-}
-
-
-#' Get Alaska district ID mapping
-#'
-#' Returns a data frame mapping Alaska district IDs to names.
-#' Alaska uses 2-digit district IDs.
+#' Returns a data frame with Alaska school district names.
+#' Alaska has approximately 54 school districts.
 #'
 #' @return Data frame with district_id and district_name
 #' @keywords internal
 get_ak_districts <- function() {
   # Alaska has ~54 school districts
-  # District IDs are typically 2 digits (01-54 range)
   # This provides a reference mapping for common districts
 
   data.frame(
@@ -188,7 +131,6 @@ get_ak_districts <- function() {
       "Nenana City School District",
       "Nome City School District",
       "North Slope Borough School District",
-
       "Northwest Arctic Borough School District",
       "Pelican City School District",
       "Petersburg City School District",
@@ -210,4 +152,33 @@ get_ak_districts <- function() {
     ),
     stringsAsFactors = FALSE
   )
+}
+
+
+#' Build Alaska DEED enrollment URL
+#'
+#' Constructs URL for Alaska DEED enrollment data files.
+#'
+#' @param end_year School year end (e.g., 2024 for 2023-24)
+#' @param file_type Type of file: "grade" or "ethnicity"
+#' @return URL string
+#' @keywords internal
+build_deed_enrollment_url <- function(end_year, file_type = "grade") {
+  # Build school year string (e.g., "2023-24" for end_year 2024)
+  start_year <- end_year - 1
+  sy_string <- paste0(start_year, "-", substr(as.character(end_year), 3, 4))
+
+  base_url <- "https://education.alaska.gov/Stats/enrollment/"
+
+  if (file_type == "grade") {
+    # "2- Enrollment by School by Grade YYYY-YY.xlsx"
+    filename <- paste0("2- Enrollment by School by Grade ", sy_string, ".xlsx")
+  } else if (file_type == "ethnicity") {
+    # "5- Enrollment by School by ethnicity YYYY-YY.xlsx"
+    filename <- paste0("5- Enrollment by School by ethnicity ", sy_string, ".xlsx")
+  } else {
+    stop("Unknown file_type: ", file_type, ". Use 'grade' or 'ethnicity'.")
+  }
+
+  paste0(base_url, utils::URLencode(filename, reserved = TRUE))
 }

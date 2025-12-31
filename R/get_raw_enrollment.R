@@ -3,337 +3,380 @@
 # ==============================================================================
 #
 # This file contains functions for downloading raw enrollment data from
-# Alaska DEED and NCES CCD (Common Core of Data).
+# Alaska Department of Education & Early Development (DEED).
 #
-# Data sources:
-# - NCES CCD (primary): 2011-present, detailed school-level data
-# - Alaska DEED School Ethnicity Reports: Historical data (2002-2018+)
-# - Alaska DEED ADM: Average Daily Membership by district
+# Data sources (all from Alaska DEED):
+# - Enrollment by School by Grade: https://education.alaska.gov/Stats/enrollment/
+# - Enrollment by School by Ethnicity: https://education.alaska.gov/Stats/enrollment/
+#
+# IMPORTANT: This package uses ONLY Alaska DEED data sources.
+# No federal data sources (NCES, Urban Institute, etc.) are used.
 #
 # ==============================================================================
 
-#' Download raw enrollment data from Alaska sources
+#' Download raw enrollment data from Alaska DEED
 #'
-#' Downloads school and district enrollment data. Primary source is NCES CCD
-#' for detailed demographic and grade-level breakdowns.
+#' Downloads school enrollment data directly from Alaska Department of
+#' Education & Early Development (DEED). This function downloads both
+#' grade-level and ethnicity enrollment files from DEED's statistics portal.
 #'
 #' @param end_year School year end (2023-24 = 2024)
 #' @return List with school and district data frames
 #' @keywords internal
 get_raw_enr <- function(end_year) {
 
-  # Validate year
-  if (end_year < 1997 || end_year > 2025) {
-    stop("end_year must be between 1997 and 2025. ",
+  # Validate year against available range
+  available <- get_available_years()
+  if (end_year < available$min_year || end_year > available$max_year) {
+    stop("end_year must be between ", available$min_year, " and ", available$max_year, ". ",
          "Use get_available_years() to see data availability.")
   }
 
-  message(paste("Downloading Alaska enrollment data for", end_year, "..."))
 
-  # Route to appropriate download function based on era
-  if (end_year >= 2011) {
-    # NCES CCD era (2011-present) - best data quality
-    return(get_raw_enr_nces(end_year))
-  } else if (end_year >= 2002) {
-    # DEED School Ethnicity Report era (2002-2010)
-    return(get_raw_enr_deed_legacy(end_year))
-  } else {
-    # Early era (1997-2001) - limited data
-    return(get_raw_enr_early(end_year))
-  }
-}
+  message(paste("Downloading Alaska DEED enrollment data for", end_year, "..."))
 
+  # Download enrollment by grade data
+  grade_data <- download_deed_enrollment_by_grade(end_year)
 
-#' Download enrollment data from NCES CCD (2011+)
-#'
-#' Downloads data from the National Center for Education Statistics
-#' Common Core of Data (CCD). This is the most reliable source for
-#' Alaska enrollment data with detailed demographics.
-#'
-#' @param end_year School year end
-#' @return List with school and district data frames
-#' @keywords internal
-get_raw_enr_nces <- function(end_year) {
+  # Download enrollment by ethnicity data
+  ethnicity_data <- download_deed_enrollment_by_ethnicity(end_year)
 
-  message("  Using NCES CCD as primary data source...")
+  # Merge the two datasets
+  school_data <- merge_deed_enrollment_data(grade_data, ethnicity_data)
 
-  # Alaska FIPS code
-  ak_fips <- "02"
-
-  # Build school year string
-  start_year <- end_year - 1
-  sy <- paste0(start_year, "-", substr(end_year, 3, 4))
-
-  # NCES CCD provides data via the ELSI table generator
-
-  # We'll use direct file downloads from nces.ed.gov
-
-  # For the implementation, we use the urbanicity/membership files
-  # File naming conventions:
-  # - School: ccd_sch_052_SSYY_l_1a_YYMMDD.csv (membership by characteristics)
-  # - Directory: ccd_sch_029_SSYY_w_1a_YYMMDD.csv (school directory)
-
-  # Construct the CCD download URL
-  # NCES uses specific date codes that change each release
-
-  # Download school membership data
-  school_data <- download_nces_membership(end_year, "school")
-
-  # Download district data (aggregated from schools or LEA file)
-  district_data <- download_nces_membership(end_year, "district")
+  # Create district aggregates from school data
+  district_data <- aggregate_to_district(school_data)
 
   list(
     school = school_data,
     district = district_data,
-    end_year = end_year
+    end_year = end_year,
+    source = "deed"
   )
 }
 
 
-#' Download NCES CCD membership data
+#' Download enrollment by grade from Alaska DEED
 #'
-#' Downloads enrollment/membership data from NCES CCD files.
+#' Downloads the "Enrollment by School by Grade" Excel file from DEED.
+#' Files are located at: https://education.alaska.gov/Stats/enrollment/
 #'
-#' @param end_year School year end
-#' @param level "school" or "district"
-#' @return Data frame with enrollment data
+#' @param end_year School year end (e.g., 2024 for 2023-24)
+#' @return Data frame with grade-level enrollment by school
 #' @keywords internal
-download_nces_membership <- function(end_year, level = "school") {
+download_deed_enrollment_by_grade <- function(end_year) {
 
-  message(paste0("  Downloading ", level, " data from NCES CCD..."))
-
-  # Alaska FIPS code
-  ak_fips <- "02"
+  # Build school year string (e.g., "2023-24" for end_year 2024)
   start_year <- end_year - 1
+  sy_string <- paste0(start_year, "-", substr(as.character(end_year), 3, 4))
 
-  # NCES CCD API endpoint for ELSI table generator
-  # This provides filtered data by state
+  # DEED file naming pattern:
+  # "2- Enrollment by School by Grade YYYY-YY.xlsx"
+  filename <- paste0("2- Enrollment by School by Grade ", sy_string, ".xlsx")
 
-  # Alternative: Use Urban Institute's education data package API
-  # The educationdata R package wraps the Urban Institute API
+  # URL encode the filename (handle spaces)
+  url <- paste0(
+    "https://education.alaska.gov/Stats/enrollment/",
+    utils::URLencode(filename, reserved = TRUE)
+  )
 
-  # For direct download, we'll construct simulated data based on known Alaska patterns
-  # and attempt real download
+  message(paste0("  Downloading grade enrollment from: ", url))
 
-  # Try the NCES flat file download
-  base_url <- "https://nces.ed.gov/ccd/Data/csv"
+  # Download to temp file
 
-  # File naming pattern varies by year
-  # Recent pattern: ccd_sch_052_SSEE_w_1a_MMDDYY.csv
-  sy_code <- paste0(start_year %% 100, end_year %% 100)
+  temp_file <- tempfile(fileext = ".xlsx")
 
-  if (level == "school") {
-    # School membership file (includes enrollment by grade and demographics)
-    file_pattern <- paste0("ccd_sch_052_", sy_code)
-  } else {
-    # LEA (district) membership file
-    file_pattern <- paste0("ccd_lea_052_", sy_code)
+  tryCatch({
+    response <- httr::GET(
+      url,
+      httr::write_disk(temp_file, overwrite = TRUE),
+      httr::timeout(120),
+      httr::user_agent("akschooldata R package")
+    )
+
+    if (httr::status_code(response) != 200) {
+      stop("Failed to download file. HTTP status: ", httr::status_code(response))
+    }
+
+    # Read the Excel file
+    df <- readxl::read_excel(temp_file, sheet = 1)
+
+    # Clean up
+    unlink(temp_file)
+
+    df
+
+  }, error = function(e) {
+    unlink(temp_file)
+    stop("Failed to download DEED enrollment by grade data for ", end_year, ": ", e$message)
+  })
+}
+
+
+#' Download enrollment by ethnicity from Alaska DEED
+#'
+#' Downloads the "Enrollment by School by Ethnicity" Excel file from DEED.
+#' Files are located at: https://education.alaska.gov/Stats/enrollment/
+#'
+#' @param end_year School year end (e.g., 2024 for 2023-24)
+#' @return Data frame with ethnicity enrollment by school
+#' @keywords internal
+download_deed_enrollment_by_ethnicity <- function(end_year) {
+
+  # Build school year string (e.g., "2024-25" for end_year 2025)
+  start_year <- end_year - 1
+  sy_string <- paste0(start_year, "-", substr(as.character(end_year), 3, 4))
+
+  # DEED file naming pattern:
+  # "5- Enrollment by School by ethnicity YYYY-YY.xlsx"
+  filename <- paste0("5- Enrollment by School by ethnicity ", sy_string, ".xlsx")
+
+  # URL encode the filename (handle spaces)
+  url <- paste0(
+    "https://education.alaska.gov/Stats/enrollment/",
+    utils::URLencode(filename, reserved = TRUE)
+  )
+
+  message(paste0("  Downloading ethnicity enrollment from: ", url))
+
+  # Download to temp file
+  temp_file <- tempfile(fileext = ".xlsx")
+
+  tryCatch({
+    response <- httr::GET(
+      url,
+      httr::write_disk(temp_file, overwrite = TRUE),
+      httr::timeout(120),
+      httr::user_agent("akschooldata R package")
+    )
+
+    if (httr::status_code(response) != 200) {
+      stop("Failed to download file. HTTP status: ", httr::status_code(response))
+    }
+
+    # Read the Excel file
+    df <- readxl::read_excel(temp_file, sheet = 1)
+
+    # Clean up
+    unlink(temp_file)
+
+    df
+
+  }, error = function(e) {
+    unlink(temp_file)
+    stop("Failed to download DEED enrollment by ethnicity data for ", end_year, ": ", e$message)
+  })
+}
+
+
+#' Merge DEED enrollment data files
+#'
+#' Combines grade-level and ethnicity enrollment data into a single dataset.
+#'
+#' @param grade_data Data frame from download_deed_enrollment_by_grade
+#' @param ethnicity_data Data frame from download_deed_enrollment_by_ethnicity
+#' @return Merged data frame with all enrollment columns
+#' @keywords internal
+merge_deed_enrollment_data <- function(grade_data, ethnicity_data) {
+
+  # Standardize column names for merging
+  # DEED files typically have columns like:
+  # - District Name, School Name, School ID (or similar)
+  # - Grade columns: PK, K, 1, 2, ... 12, Total
+  # - Ethnicity columns: American Indian/Alaska Native, Asian, Black, Hispanic, etc.
+
+  # Find common key columns for merging
+  grade_cols <- tolower(names(grade_data))
+  eth_cols <- tolower(names(ethnicity_data))
+
+  # Identify the school identifier column
+  school_id_patterns <- c("school.*id", "schoolid", "sch.*id", "nces")
+  school_name_patterns <- c("school.*name", "schoolname", "school")
+  district_name_patterns <- c("district.*name", "districtname", "district")
+
+  # Normalize grade data column names
+  names(grade_data) <- normalize_deed_colnames(names(grade_data))
+
+  # Normalize ethnicity data column names
+  names(ethnicity_data) <- normalize_deed_colnames(names(ethnicity_data))
+
+  # Merge on school identifiers
+  # Use school name and district as the merge key if no ID column
+  merge_keys <- intersect(names(grade_data), names(ethnicity_data))
+  merge_keys <- merge_keys[merge_keys %in% c("district_name", "school_name", "school_id", "district_id")]
+
+  if (length(merge_keys) == 0) {
+    # Fallback: use row binding with a warning
+    warning("Could not identify merge keys. Using grade data as primary.")
+    return(grade_data)
   }
 
-  # Try to find and download the file
-  # Since exact filenames vary, we'll use a fallback approach
+  # Identify columns unique to each dataset
+  grade_only_cols <- setdiff(names(grade_data), names(ethnicity_data))
+  eth_only_cols <- setdiff(names(ethnicity_data), names(grade_data))
 
-  result <- tryCatch({
-    download_nces_file(end_year, level, ak_fips)
-  }, error = function(e) {
-    message("  Note: Using cached/simulated data structure for ", end_year)
-    create_nces_template(end_year, level, ak_fips)
-  })
+  # Merge datasets
+  merged <- dplyr::left_join(
+    grade_data,
+    ethnicity_data[, c(merge_keys, eth_only_cols)],
+    by = merge_keys
+  )
+
+  merged
+}
+
+
+#' Normalize DEED column names
+#'
+#' Converts DEED Excel column names to standardized format.
+#'
+#' @param colnames Character vector of column names
+#' @return Normalized column names
+#' @keywords internal
+normalize_deed_colnames <- function(colnames) {
+
+  # Start with lowercase
+  result <- tolower(colnames)
+
+  # Remove special characters and extra spaces
+  result <- gsub("[^a-z0-9 ]", "", result)
+  result <- trimws(result)
+  result <- gsub("\\s+", "_", result)
+
+  # Standardize common column names
+  result <- gsub("^district$", "district_name", result)
+  result <- gsub("^district_name$", "district_name", result)
+  result <- gsub("^school$", "school_name", result)
+  result <- gsub("^school_name$", "school_name", result)
+  result <- gsub("schoolid", "school_id", result)
+  result <- gsub("districtid", "district_id", result)
+
+  # Standardize grade columns
+  result <- gsub("^pk$", "grade_pk", result)
+  result <- gsub("^prek$", "grade_pk", result)
+  result <- gsub("^pre_k$", "grade_pk", result)
+  result <- gsub("^k$", "grade_k", result)
+  result <- gsub("^kindergarten$", "grade_k", result)
+  result <- gsub("^1$", "grade_01", result)
+  result <- gsub("^2$", "grade_02", result)
+  result <- gsub("^3$", "grade_03", result)
+  result <- gsub("^4$", "grade_04", result)
+  result <- gsub("^5$", "grade_05", result)
+  result <- gsub("^6$", "grade_06", result)
+  result <- gsub("^7$", "grade_07", result)
+  result <- gsub("^8$", "grade_08", result)
+  result <- gsub("^9$", "grade_09", result)
+  result <- gsub("^10$", "grade_10", result)
+  result <- gsub("^11$", "grade_11", result)
+  result <- gsub("^12$", "grade_12", result)
+
+  # Standardize ethnicity columns
+  result <- gsub("american_indian.*alaska_native", "native_american", result)
+  result <- gsub("alaska_native.*american_indian", "native_american", result)
+  result <- gsub("^aian$", "native_american", result)
+  result <- gsub("native_hawaiian.*pacific_islander", "pacific_islander", result)
+  result <- gsub("^nhpi$", "pacific_islander", result)
+  result <- gsub("^asian$", "asian", result)
+  result <- gsub("^black.*african.*american$", "black", result)
+  result <- gsub("^black$", "black", result)
+  result <- gsub("^hispanic.*latino$", "hispanic", result)
+  result <- gsub("^hispanic$", "hispanic", result)
+  result <- gsub("^white$", "white", result)
+  result <- gsub("two_or_more.*races", "multiracial", result)
+  result <- gsub("^multiracial$", "multiracial", result)
+
+  # Gender columns
+  result <- gsub("^male$", "male", result)
+  result <- gsub("^female$", "female", result)
+
+  # Total column
+  result <- gsub("^total$", "row_total", result)
+  result <- gsub("^total_enrollment$", "row_total", result)
 
   result
 }
 
 
-#' Download NCES CCD file
+#' Aggregate school data to district level
 #'
-#' Attempts to download and parse NCES CCD flat file.
+#' Creates district-level aggregates from school-level data.
 #'
-#' @param end_year School year end
-#' @param level "school" or "district"
-#' @param state_fips State FIPS code (02 for Alaska)
-#' @return Data frame
+#' @param school_data Data frame with school-level enrollment
+#' @return Data frame with district-level enrollment
 #' @keywords internal
-download_nces_file <- function(end_year, level, state_fips = "02") {
+aggregate_to_district <- function(school_data) {
 
-  # NCES provides data through their files page
-  # We'll construct the API URL for the membership data
+  if (is.null(school_data) || nrow(school_data) == 0) {
+    return(data.frame())
+  }
 
-  start_year <- end_year - 1
+  # Identify numeric columns to sum
+  numeric_cols <- names(school_data)[sapply(school_data, is.numeric)]
+  numeric_cols <- numeric_cols[!numeric_cols %in% c("school_id", "district_id")]
 
-  # Use the NCES table generator API approach
-  # Base URL for CCD data
-  base_url <- "https://nces.ed.gov/ccd/elsi"
+  # Group by district and sum
+  district_data <- school_data %>%
+    dplyr::group_by(district_name) %>%
+    dplyr::summarize(
+      dplyr::across(dplyr::all_of(numeric_cols), ~sum(.x, na.rm = TRUE)),
+      .groups = "drop"
+    )
 
-  # For a working implementation, we'd use the ELSI export feature
+  # Add district_id if available in school data
+  if ("district_id" %in% names(school_data)) {
+    district_ids <- school_data %>%
+      dplyr::select(district_name, district_id) %>%
+      dplyr::distinct()
 
-  # For now, we'll generate a proper template that matches real data structure
+    district_data <- dplyr::left_join(district_data, district_ids, by = "district_name")
+  }
 
-  # Create temp file
-  temp_file <- tempfile(fileext = ".csv")
-
-  # Try direct download of state-level data from public URLs
-  # NCES also provides data through data.gov and API endpoints
-
-  # Fallback: Create Alaska-specific template data
-  # This will be populated with real Alaska district/school IDs
-
-  create_ak_enrollment_template(end_year, level)
+  district_data
 }
 
 
-#' Create Alaska enrollment data template
+#' Import local DEED enrollment files
 #'
-#' Creates a data frame with proper structure matching NCES CCD data.
-#' Populated with Alaska district and school information.
+#' Fallback function to import locally downloaded DEED enrollment files.
+#' Use this if automatic download fails due to network issues.
 #'
-#' @param end_year School year end
-#' @param level "school" or "district"
-#' @return Data frame with Alaska enrollment structure
-#' @keywords internal
-create_ak_enrollment_template <- function(end_year, level = "school") {
+#' @param grade_file Path to local "Enrollment by School by Grade" xlsx file
+#' @param ethnicity_file Path to local "Enrollment by School by Ethnicity" xlsx file
+#' @param end_year School year end (e.g., 2024 for 2023-24)
+#' @return List with school and district data frames
+#' @export
+#' @examples
+#' \dontrun{
+#' # Download files manually from:
+#' # https://education.alaska.gov/Stats/enrollment/
+#'
+#' raw_data <- import_local_deed_enrollment(
+#'   grade_file = "2- Enrollment by School by Grade 2023-24.xlsx",
+#'   ethnicity_file = "5- Enrollment by School by ethnicity 2023-24.xlsx",
+#'   end_year = 2024
+#' )
+#' }
+import_local_deed_enrollment <- function(grade_file, ethnicity_file, end_year) {
 
-  # Get Alaska districts
-  districts <- get_ak_districts()
-
-  if (level == "district") {
-    # Create district-level template
-    df <- data.frame(
-      FIPST = rep("02", nrow(districts)),
-      LEAID = paste0("02", sprintf("%05d", 1:nrow(districts))),
-      LEA_NAME = districts$district_name,
-      SCHID = rep(NA_character_, nrow(districts)),
-      SCH_NAME = rep(NA_character_, nrow(districts)),
-      stringsAsFactors = FALSE
-    )
-  } else {
-    # Create school-level template
-    # Alaska has approximately 500 schools
-    # For template purposes, create sample structure
-    n_schools <- nrow(districts) * 8  # ~8 schools per district average
-
-    df <- data.frame(
-      FIPST = rep("02", n_schools),
-      LEAID = rep(paste0("02", sprintf("%05d", 1:nrow(districts))), each = 8),
-      LEA_NAME = rep(districts$district_name, each = 8),
-      SCHID = paste0("02", sprintf("%05d", rep(1:nrow(districts), each = 8)),
-                     sprintf("%05d", rep(1:8, nrow(districts)))),
-      SCH_NAME = paste0("School ", 1:n_schools),
-      stringsAsFactors = FALSE
-    )
+  if (!file.exists(grade_file)) {
+    stop("Grade enrollment file not found: ", grade_file)
+  }
+  if (!file.exists(ethnicity_file)) {
+    stop("Ethnicity enrollment file not found: ", ethnicity_file)
   }
 
-  # Add enrollment columns (placeholders - will be replaced with real data)
-  enrollment_cols <- c(
-    "TOTAL", "AM", "AS", "HI", "BL", "WH", "HP", "TR",
-    "MALE", "FEMALE",
-    "PK", "KG", "G01", "G02", "G03", "G04", "G05", "G06",
-    "G07", "G08", "G09", "G10", "G11", "G12", "UG"
-  )
+  message("Importing local DEED enrollment files...")
 
-  for (col in enrollment_cols) {
-    df[[col]] <- NA_integer_
-  }
+  grade_data <- readxl::read_excel(grade_file, sheet = 1)
+  ethnicity_data <- readxl::read_excel(ethnicity_file, sheet = 1)
 
-  df
-}
-
-
-#' Download from Alaska DEED legacy format (2002-2010)
-#'
-#' Downloads enrollment data from DEED School Ethnicity Reports.
-#' These are PDF files that require parsing.
-#'
-#' @param end_year School year end
-#' @return List with school and district data
-#' @keywords internal
-get_raw_enr_deed_legacy <- function(end_year) {
-
-  message("  Using Alaska DEED School Ethnicity Report format...")
-
-  # DEED provides PDF files for historical data
-  # Pattern: https://education.alaska.gov/stats/SchoolEthnicity/YYYY_School_Ethnicity_Report.pdf
-
-  url <- build_deed_url(end_year, "ethnicity")
-
-  message(paste0("  Attempting download from: ", url))
-
-  # For PDF parsing, we'd need pdftools or tabulizer
-  # For now, provide structure that matches expected format
-
-  # Create template with proper Alaska structure
-  school_data <- create_ak_enrollment_template(end_year, "school")
-  district_data <- create_ak_enrollment_template(end_year, "district")
+  school_data <- merge_deed_enrollment_data(grade_data, ethnicity_data)
+  district_data <- aggregate_to_district(school_data)
 
   list(
     school = school_data,
     district = district_data,
     end_year = end_year,
-    source = "deed_legacy"
-  )
-}
-
-
-#' Download early era data (1997-2001)
-#'
-#' Limited data available for early years.
-#'
-#' @param end_year School year end
-#' @return List with available data
-#' @keywords internal
-get_raw_enr_early <- function(end_year) {
-
-  message("  Note: Limited data available for years before 2002")
-  message("  Using NCES historical data where available...")
-
-  # For early years, provide minimal template
-  school_data <- create_ak_enrollment_template(end_year, "school")
-  district_data <- create_ak_enrollment_template(end_year, "district")
-
-  list(
-    school = school_data,
-    district = district_data,
-    end_year = end_year,
-    source = "early_era"
-  )
-}
-
-
-#' Create template for NCES data structure
-#'
-#' @param end_year School year end
-#' @param level "school" or "district"
-#' @param state_fips State FIPS code
-#' @return Data frame with proper NCES column structure
-#' @keywords internal
-create_nces_template <- function(end_year, level, state_fips = "02") {
-  create_ak_enrollment_template(end_year, level)
-}
-
-
-#' Download Alaska DEED ADM data
-#'
-#' Downloads Average Daily Membership data from Alaska DEED.
-#' This provides district-level enrollment counts.
-#'
-#' @param end_year School year end (optional, downloads full historical file)
-#' @return Data frame with ADM data
-#' @keywords internal
-download_deed_adm <- function(end_year = NULL) {
-
-  # ADM data URL - single file with all years
-  url <- "https://education.alaska.gov/stats/QuickFacts/ADM.pdf"
-
-  message(paste0("  Downloading ADM data from: ", url))
-
-  # This is a PDF file - would need pdftools for parsing
-  # Return template for now
-  districts <- get_ak_districts()
-
-  data.frame(
-    district_id = districts$district_id,
-    district_name = districts$district_name,
-    end_year = if (!is.null(end_year)) end_year else 2024,
-    adm = NA_real_,
-    stringsAsFactors = FALSE
+    source = "deed_local"
   )
 }
