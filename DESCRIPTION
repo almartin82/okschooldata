@@ -1,0 +1,38 @@
+Package: okschooldata
+Title: Fetch and Process Oklahoma School Data
+Version: 0.1.0
+Authors@R:
+    person("Al", "Martin", email = "almartin@example.com", role = c("aut", "cre"))
+Author: Al Martin [aut, cre]
+Maintainer: Al Martin <almartin@example.com>
+Description: Downloads and processes school data from the Oklahoma State
+    Department of Education (OSDE). Provides functions for fetching enrollment
+    data from OSDE's public reporting systems and transforming it into tidy
+    format for analysis. Supports district and site (school) level enrollment
+    data with demographics and grade-level breakdowns.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Depends:
+    R (>= 4.0)
+Imports:
+    dplyr,
+    readxl,
+    readr,
+    purrr,
+    stringr,
+    tidyr,
+    rlang,
+    httr,
+    rappdirs
+Suggests:
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown,
+    ggplot2,
+    scales
+VignetteBuilder: knitr
+Config/testthat/edition: 3
+URL: https://almartin82.github.io/okschooldata/, https://github.com/almartin82/okschooldata
+BugReports: https://github.com/almartin82/okschooldata/issues
