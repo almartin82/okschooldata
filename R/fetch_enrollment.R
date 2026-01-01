@@ -44,17 +44,16 @@
 #' enr_fresh <- fetch_enr(2024, use_cache = FALSE)
 #'
 #' # Filter to specific district
-#' okc_ps <- enr_2024 %>%
+#' okc_ps <- enr_2024 |>
 #'   dplyr::filter(district_id == "55I001")
 #' }
 fetch_enr <- function(end_year, tidy = TRUE, use_cache = TRUE) {
 
-  # Validate year - Modern era: 2018-2025
-  available_years <- get_available_years()
-  if (!end_year %in% available_years) {
+  # Validate year
+  years_info <- get_available_years()
+  if (end_year < years_info$min_year || end_year > years_info$max_year) {
     stop(paste0(
-      "end_year must be between ", min(available_years), " and ", max(available_years),
-      ". Available years: ", paste(available_years, collapse = ", ")
+      "end_year must be between ", years_info$min_year, " and ", years_info$max_year
     ))
   }
 
@@ -75,7 +74,7 @@ fetch_enr <- function(end_year, tidy = TRUE, use_cache = TRUE) {
 
   # Optionally tidy
   if (tidy) {
-    processed <- tidy_enr(processed) %>%
+    processed <- tidy_enr(processed) |>
       id_enr_aggs()
   }
 
@@ -103,18 +102,18 @@ fetch_enr <- function(end_year, tidy = TRUE, use_cache = TRUE) {
 #' enr_multi <- fetch_enr_multi(2022:2024)
 #'
 #' # Track enrollment trends
-#' enr_multi %>%
-#'   dplyr::filter(is_state, subgroup == "total_enrollment", grade_level == "TOTAL") %>%
+#' enr_multi |>
+#'   dplyr::filter(is_state, subgroup == "total_enrollment", grade_level == "TOTAL") |>
 #'   dplyr::select(end_year, n_students)
 #' }
 fetch_enr_multi <- function(end_years, tidy = TRUE, use_cache = TRUE) {
 
   # Validate years
-  available_years <- get_available_years()
-  invalid_years <- end_years[!end_years %in% available_years]
+  years_info <- get_available_years()
+  invalid_years <- end_years[end_years < years_info$min_year | end_years > years_info$max_year]
   if (length(invalid_years) > 0) {
     stop(paste("Invalid years:", paste(invalid_years, collapse = ", "),
-               "\nAvailable years:", paste(available_years, collapse = ", ")))
+               "\nend_year must be between", years_info$min_year, "and", years_info$max_year))
   }
 
   # Fetch each year
@@ -131,20 +130,3 @@ fetch_enr_multi <- function(end_years, tidy = TRUE, use_cache = TRUE) {
 }
 
 
-#' Get available years for Oklahoma enrollment data
-#'
-#' Returns a vector of school year ends for which enrollment data is available.
-#' Data is available from 2016 (FY15-16) through 2025 (current).
-#'
-#' @return Integer vector of available years
-#' @export
-#' @examples
-#' get_available_years()
-get_available_years <- function() {
-
- # Oklahoma enrollment data is available from FY15-16 (SY2016) through current
-  # Data eras:
-  # - Legacy Era (2016-2021): Files on oklahoma.gov with FY naming (e.g., FY15-16)
-  # - Modern Era (2022-2025): Files with SY naming (e.g., SY2024)
-  2016:2025
-}
