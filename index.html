@@ -60,7 +60,7 @@
 <!-- badges: start -->
 
 <p><strong><a href="https://almartin82.github.io/okschooldata/">Documentation</a></strong> | <a href="https://github.com/almartin82/okschooldata" class="external-link">GitHub</a></p>
-<p>An R package for accessing Oklahoma school enrollment data from the Oklahoma State Department of Education (OSDE). <strong>10 years of data</strong> (2016-2025) for every school, district, and the state.</p>
+<p>Fetch and analyze Oklahoma school enrollment data from the Oklahoma State Department of Education (OSDE) in R or Python. <strong>10 years of data</strong> (2016-2025) for every school, district, and the state.</p>
 <div class="section level2">
 <h2 id="what-can-you-find-with-okschooldata">What can you find with okschooldata?<a class="anchor" aria-label="anchor" href="#what-can-you-find-with-okschooldata"></a>
 </h2>
@@ -278,6 +278,9 @@
 <div class="section level2">
 <h2 id="quick-start">Quick Start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
 </h2>
+<div class="section level3">
+<h3 id="r">R<a class="anchor" aria-label="anchor" href="#r"></a>
+</h3>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://almartin82.github.io/okschooldata/">okschooldata</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
@@ -300,6 +303,31 @@
 <span></span>
 <span><span class="co"># Get multiple years</span></span>
 <span><span class="va">enr_multi</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/fetch_enr_multi.html">fetch_enr_multi</a></span><span class="op">(</span><span class="fl">2020</span><span class="op">:</span><span class="fl">2025</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="python">Python<a class="anchor" aria-label="anchor" href="#python"></a>
+</h3>
+<div class="sourceCode" id="cb13"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="im">import</span> pyokschooldata <span class="im">as</span> ok</span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a></span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="co"># Get 2025 enrollment data (2024-25 school year)</span></span>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a>df <span class="op">=</span> ok.fetch_enr(<span class="dv">2025</span>)</span>
+<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a></span>
+<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a><span class="co"># Statewide total</span></span>
+<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a>state_total <span class="op">=</span> df[(df[<span class="st">'is_state'</span>] <span class="op">==</span> <span class="va">True</span>) <span class="op">&amp;</span></span>
+<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a>                 (df[<span class="st">'subgroup'</span>] <span class="op">==</span> <span class="st">'total_enrollment'</span>) <span class="op">&amp;</span></span>
+<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a>                 (df[<span class="st">'grade_level'</span>] <span class="op">==</span> <span class="st">'TOTAL'</span>)]</span>
+<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a><span class="bu">print</span>(state_total[<span class="st">'n_students'</span>].values[<span class="dv">0</span>])</span>
+<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a><span class="co">#&gt; 718934</span></span>
+<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a></span>
+<span id="cb13-13"><a href="#cb13-13" tabindex="-1"></a><span class="co"># Top 10 districts</span></span>
+<span id="cb13-14"><a href="#cb13-14" tabindex="-1"></a>districts <span class="op">=</span> df[(df[<span class="st">'is_district'</span>] <span class="op">==</span> <span class="va">True</span>) <span class="op">&amp;</span></span>
+<span id="cb13-15"><a href="#cb13-15" tabindex="-1"></a>               (df[<span class="st">'subgroup'</span>] <span class="op">==</span> <span class="st">'total_enrollment'</span>) <span class="op">&amp;</span></span>
+<span id="cb13-16"><a href="#cb13-16" tabindex="-1"></a>               (df[<span class="st">'grade_level'</span>] <span class="op">==</span> <span class="st">'TOTAL'</span>)]</span>
+<span id="cb13-17"><a href="#cb13-17" tabindex="-1"></a><span class="bu">print</span>(districts.nlargest(<span class="dv">10</span>, <span class="st">'n_students'</span>)[[<span class="st">'district_name'</span>, <span class="st">'n_students'</span>]])</span>
+<span id="cb13-18"><a href="#cb13-18" tabindex="-1"></a></span>
+<span id="cb13-19"><a href="#cb13-19" tabindex="-1"></a><span class="co"># Get multiple years</span></span>
+<span id="cb13-20"><a href="#cb13-20" tabindex="-1"></a>df_multi <span class="op">=</span> ok.fetch_enr_multi([<span class="dv">2020</span>, <span class="dv">2021</span>, <span class="dv">2022</span>, <span class="dv">2023</span>, <span class="dv">2024</span>, <span class="dv">2025</span>])</span></code></pre></div>
+</div>
 </div>
 <div class="section level2">
 <h2 id="data-availability">Data Availability<a class="anchor" aria-label="anchor" href="#data-availability"></a>
@@ -410,7 +438,7 @@
 <div class="section level2">
 <h2 id="caching">Caching<a class="anchor" aria-label="anchor" href="#caching"></a>
 </h2>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># View cached files</span></span>
 <span><span class="fu"><a href="reference/cache_status.html">cache_status</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
@@ -473,6 +501,7 @@
 <h2 data-toc-skip>Dev status</h2>
 <ul class="list-unstyled">
 <li><a href="https://github.com/almartin82/okschooldata/actions/workflows/R-CMD-check.yaml" class="external-link"><img src="https://github.com/almartin82/okschooldata/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R-CMD-check"></a></li>
+<li><a href="https://github.com/almartin82/okschooldata/actions/workflows/python-test.yaml" class="external-link"><img src="https://github.com/almartin82/okschooldata/actions/workflows/python-test.yaml/badge.svg" alt="Python Tests"></a></li>
 </ul>
 </div>
 

@@ -3,9 +3,9 @@
 **[Documentation](https://almartin82.github.io/okschooldata/)** \|
 [GitHub](https://github.com/almartin82/okschooldata)
 
-An R package for accessing Oklahoma school enrollment data from the
-Oklahoma State Department of Education (OSDE). **10 years of data**
-(2016-2025) for every school, district, and the state.
+Fetch and analyze Oklahoma school enrollment data from the Oklahoma
+State Department of Education (OSDE) in R or Python. **10 years of
+data** (2016-2025) for every school, district, and the state.
 
 ## What can you find with okschooldata?
 
@@ -262,6 +262,8 @@ devtools::install_github("almartin82/okschooldata")
 
 ## Quick Start
 
+### R
+
 ``` r
 library(okschooldata)
 library(dplyr)
@@ -284,6 +286,31 @@ enr |>
 
 # Get multiple years
 enr_multi <- fetch_enr_multi(2020:2025)
+```
+
+### Python
+
+``` python
+import pyokschooldata as ok
+
+# Get 2025 enrollment data (2024-25 school year)
+df = ok.fetch_enr(2025)
+
+# Statewide total
+state_total = df[(df['is_state'] == True) &
+                 (df['subgroup'] == 'total_enrollment') &
+                 (df['grade_level'] == 'TOTAL')]
+print(state_total['n_students'].values[0])
+#> 718934
+
+# Top 10 districts
+districts = df[(df['is_district'] == True) &
+               (df['subgroup'] == 'total_enrollment') &
+               (df['grade_level'] == 'TOTAL')]
+print(districts.nlargest(10, 'n_students')[['district_name', 'n_students']])
+
+# Get multiple years
+df_multi = ok.fetch_enr_multi([2020, 2021, 2022, 2023, 2024, 2025])
 ```
 
 ## Data Availability
