@@ -39,10 +39,10 @@
 get_raw_enr <- function(end_year) {
 
   # Validate year
-  available_years <- get_available_years()
-  if (!end_year %in% available_years) {
-    stop(paste0("end_year must be between ", min(available_years),
-                " and ", max(available_years)))
+  years_info <- get_available_years()
+  if (end_year < years_info$min_year || end_year > years_info$max_year) {
+    stop(paste0("end_year must be between ", years_info$min_year,
+                " and ", years_info$max_year))
   }
 
   message(paste("Downloading OSDE enrollment data for", end_year, "..."))
