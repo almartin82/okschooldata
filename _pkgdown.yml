@@ -36,16 +36,15 @@ reference:
       - akschooldata-package
 
 articles:
-  - title: "Getting Started"
+  - title: "Key Insights"
+    navbar: ~
     contents:
-      - quickstart
-
-  - title: "Data Analysis"
-    contents:
-      - data-quality-qa
+      - enrollment_hooks
 
 home:
   links:
+    - text: "10 Insights from Alaska Enrollment Data"
+      href: articles/enrollment_hooks.html
     - text: "Part of the 50 State Schooldata Family"
       href: https://github.com/almartin82/njschooldata
     - text: Alaska DEED Data Center
