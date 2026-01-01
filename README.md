@@ -174,6 +174,14 @@ enr_2025 %>%
 
 ---
 
+## Enrollment Visualizations
+
+<img src="https://almartin82.github.io/akschooldata/articles/enrollment_hooks_files/figure-html/statewide-chart-1.png" alt="Alaska statewide enrollment trends" width="600">
+
+<img src="https://almartin82.github.io/akschooldata/articles/enrollment_hooks_files/figure-html/top-districts-chart-1.png" alt="Top Alaska districts" width="600">
+
+See the [full vignette](https://almartin82.github.io/akschooldata/articles/enrollment_hooks.html) for more insights.
+
 ## Installation
 
 ```r
