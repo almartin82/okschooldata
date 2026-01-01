@@ -17,5 +17,13 @@ Integer vector of available years
 
 ``` r
 get_available_years()
-#>  [1] 2016 2017 2018 2019 2020 2021 2022 2023 2024 2025
+#> $min_year
+#> [1] 2016
+#> 
+#> $max_year
+#> [1] 2025
+#> 
+#> $description
+#> [1] "Oklahoma enrollment data from OSDE is available for school years 2015-16 through 2024-25 (end years 2016-2025)"
+#> 
 ```
