@@ -1,15 +1,12 @@
 Package: okschooldata
-Title: Fetch and Process Oklahoma School Data
+Title: Oklahoma School Data
 Version: 0.1.0
 Authors@R:
     person("Al", "Martin", email = "almartin@example.com", role = c("aut", "cre"))
 Author: Al Martin [aut, cre]
 Maintainer: Al Martin <almartin@example.com>
-Description: Downloads and processes school data from the Oklahoma State
-    Department of Education (OSDE). Provides functions for fetching enrollment
-    data from OSDE's public reporting systems and transforming it into tidy
-    format for analysis. Supports district and site (school) level enrollment
-    data with demographics and grade-level breakdowns.
+Description: A simple, consistent interface for accessing Oklahoma
+    school data in R.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
