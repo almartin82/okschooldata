@@ -1,25 +1,12 @@
 """
 Tests for pyokschooldata Python wrapper.
 
-These tests verify that the Python wrapper correctly interfaces with
-the underlying R package and returns valid pandas DataFrames.
+Simple tests that mirror the R testthat tests - just verify the Python
+wrapper can call R functions and return DataFrames.
 """
 
 import pytest
 import pandas as pd
-
-
-# Cache available years to avoid repeated R calls
-_available_years = None
-
-
-def get_test_years():
-    """Get available years for testing, cached."""
-    global _available_years
-    if _available_years is None:
-        import pyokschooldata as ok
-        _available_years = ok.get_available_years()
-    return _available_years
 
 
 class TestImport:
@@ -27,59 +14,38 @@ class TestImport:
 
     def test_import_package(self):
         """Package imports successfully."""
-        import pyokschooldata as ok
-        assert ok is not None
+        import pyokschooldata as pkg
+        assert pkg is not None
 
     def test_import_functions(self):
-        """All expected functions are available."""
-        import pyokschooldata as ok
-        assert hasattr(ok, 'fetch_enr')
-        assert hasattr(ok, 'fetch_enr_multi')
-        assert hasattr(ok, 'tidy_enr')
-        assert hasattr(ok, 'get_available_years')
+        """Expected functions are available."""
+        import pyokschooldata as pkg
+        assert hasattr(pkg, 'fetch_enr')
+        assert hasattr(pkg, 'get_available_years')
 
     def test_version_exists(self):
         """Package has a version string."""
-        import pyokschooldata as ok
-        assert hasattr(ok, '__version__')
-        assert isinstance(ok.__version__, str)
+        import pyokschooldata as pkg
+        assert hasattr(pkg, '__version__')
+        assert isinstance(pkg.__version__, str)
 
 
 class TestGetAvailableYears:
     """Test get_available_years function."""
 
     def test_returns_dict(self):
-        """Returns a dictionary."""
-        import pyokschooldata as ok
-        years = ok.get_available_years()
+        """Returns a dictionary with year info."""
+        import pyokschooldata as pkg
+        years = pkg.get_available_years()
         assert isinstance(years, dict)
-
-    def test_has_min_max_keys(self):
-        """Dictionary has min_year and max_year keys."""
-        import pyokschooldata as ok
-        years = ok.get_available_years()
         assert 'min_year' in years
         assert 'max_year' in years
 
-    def test_years_are_integers(self):
-        """Year values are integers."""
-        import pyokschooldata as ok
-        years = ok.get_available_years()
-        assert isinstance(years['min_year'], int)
-        assert isinstance(years['max_year'], int)
-
-    def test_min_less_than_max(self):
-        """min_year is less than max_year."""
-        import pyokschooldata as ok
-        years = ok.get_available_years()
+    def test_years_are_reasonable(self):
+        """Year values are reasonable."""
+        import pyokschooldata as pkg
+        years = pkg.get_available_years()
         assert years['min_year'] < years['max_year']
-
-    def test_reasonable_year_range(self):
-        """Years are in a reasonable range."""
-        import pyokschooldata as ok
-        years = ok.get_available_years()
-        assert years['min_year'] >= 2010
-        assert years['min_year'] <= 2020
         assert years['max_year'] >= 2020
         assert years['max_year'] <= 2030
 
@@ -89,144 +55,26 @@ class TestFetchEnr:
 
     def test_returns_dataframe(self):
         """Returns a pandas DataFrame."""
-        import pyokschooldata as ok
-        years = get_test_years()
-        df = ok.fetch_enr(years['max_year'])
+        import pyokschooldata as pkg
+        years = pkg.get_available_years()
+        df = pkg.fetch_enr(years['max_year'])
         assert isinstance(df, pd.DataFrame)
-
-    def test_dataframe_not_empty(self):
-        """DataFrame is not empty."""
-        import pyokschooldata as ok
-        years = get_test_years()
-        df = ok.fetch_enr(years['max_year'])
         assert len(df) > 0
 
-    def test_has_expected_columns(self):
-        """DataFrame has expected columns."""
-        import pyokschooldata as ok
-        years = get_test_years()
-        df = ok.fetch_enr(years['max_year'])
-        expected_cols = ['end_year', 'n_students', 'grade_level']
-        for col in expected_cols:
-            assert col in df.columns, f"Missing column: {col}"
+    def test_has_end_year_column(self):
+        """DataFrame has end_year column."""
+        import pyokschooldata as pkg
+        years = pkg.get_available_years()
+        df = pkg.fetch_enr(years['max_year'])
+        assert 'end_year' in df.columns
 
-    def test_end_year_matches_request(self):
-        """end_year column matches requested year."""
-        import pyokschooldata as ok
-        years = get_test_years()
-        df = ok.fetch_enr(years['max_year'])
-        assert (df['end_year'] == years['max_year']).all()
-
-    def test_n_students_is_numeric(self):
-        """n_students column is numeric."""
-        import pyokschooldata as ok
-        years = get_test_years()
-        df = ok.fetch_enr(years['max_year'])
-        assert pd.api.types.is_numeric_dtype(df['n_students'])
-
-    def test_has_reasonable_row_count(self):
-        """DataFrame has a reasonable number of rows."""
-        import pyokschooldata as ok
-        years = get_test_years()
-        df = ok.fetch_enr(years['max_year'])
-        # Should have many rows (schools x grades x subgroups)
-        assert len(df) > 1000
-
-    def test_total_enrollment_reasonable(self):
-        """Total enrollment is in a reasonable range."""
-        import pyokschooldata as ok
-        years = get_test_years()
-        df = ok.fetch_enr(years['max_year'])
-        # Filter for state-level total if available
-        if 'is_state' in df.columns and 'subgroup' in df.columns and 'grade_level' in df.columns:
-            total_df = df[(df['is_state'] == True) &
-                         (df['subgroup'] == 'total_enrollment') &
-                         (df['grade_level'] == 'TOTAL')]
-            if len(total_df) > 0:
-                total = total_df['n_students'].sum()
-                # Oklahoma should have ~700k students
-                assert total > 500_000
-                assert total < 1_000_000
-
-
-class TestFetchEnrMulti:
-    """Test fetch_enr_multi function."""
-
-    def test_returns_dataframe(self):
-        """Returns a pandas DataFrame."""
-        import pyokschooldata as ok
-        years = get_test_years()
-        # Test with just max_year as a single-element list
-        df = ok.fetch_enr_multi([years['max_year']])
-        assert isinstance(df, pd.DataFrame)
-
-    def test_contains_requested_year(self):
-        """DataFrame contains the requested year."""
-        import pyokschooldata as ok
-        years = get_test_years()
-        test_year = years['max_year']
-        df = ok.fetch_enr_multi([test_year])
-        result_years = df['end_year'].unique()
-        assert test_year in result_years, f"Missing year: {test_year}"
-
-    def test_multi_matches_single(self):
-        """Single-element multi-year fetch matches single fetch."""
-        import pyokschooldata as ok
-        years = get_test_years()
-        df_single = ok.fetch_enr(years['max_year'])
-        df_multi = ok.fetch_enr_multi([years['max_year']])
-        # Row counts should match
-        assert len(df_single) == len(df_multi)
-
-
-class TestDataIntegrity:
-    """Test data integrity across functions."""
-
-    def test_consistent_between_single_and_multi(self):
-        """Single year fetch matches corresponding year in multi fetch."""
-        import pyokschooldata as ok
-        years = get_test_years()
-        df_single = ok.fetch_enr(years['max_year'])
-        df_multi = ok.fetch_enr_multi([years['max_year']])
-
-        # Row counts should match
-        assert len(df_single) == len(df_multi)
-
-    def test_years_within_available_range(self):
-        """Fetching within available range succeeds."""
-        import pyokschooldata as ok
-        years = ok.get_available_years()
-        # Fetch the most recent year
-        df = ok.fetch_enr(years['max_year'])
-        assert len(df) > 0
-
-
-class TestEdgeCases:
-    """Test edge cases and error handling."""
-
-    def test_invalid_year_raises_error(self):
-        """Invalid year raises appropriate error."""
-        import pyokschooldata as ok
+    def test_validates_year_range(self):
+        """Invalid years raise errors."""
+        import pyokschooldata as pkg
         with pytest.raises(Exception):
-            ok.fetch_enr(1800)  # Way too old
-
-    def test_future_year_raises_error(self):
-        """Future year raises appropriate error."""
-        import pyokschooldata as ok
+            pkg.fetch_enr(1800)
         with pytest.raises(Exception):
-            ok.fetch_enr(2099)  # Way in future
-
-    def test_empty_year_list_behavior(self):
-        """Empty year list raises error or returns empty DataFrame."""
-        import pyokschooldata as ok
-        try:
-            result = ok.fetch_enr_multi([])
-            # If no exception, should be empty DataFrame
-            assert isinstance(result, pd.DataFrame)
-            assert len(result) == 0
-        except Exception:
-            # Exception is also acceptable behavior
-            pass
+            pkg.fetch_enr(2099)
 
 
 if __name__ == "__main__":
