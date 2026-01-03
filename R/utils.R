@@ -26,7 +26,7 @@ NULL
 get_available_years <- function() {
   list(
     min_year = 2016L,
-    max_year = 2024L,
-    description = "Oklahoma enrollment data from OSDE is available for school years 2015-16 through 2023-24 (end years 2016-2024)"
+    max_year = 2025L,
+    description = "Oklahoma enrollment data from OSDE is available for school years 2015-16 through 2024-25 (end years 2016-2025)"
   )
 }
