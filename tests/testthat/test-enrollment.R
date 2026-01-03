@@ -28,8 +28,8 @@ test_that("get_available_years returns valid range", {
   expect_true(is.numeric(years))
   expect_true(length(years) > 0)
   expect_true(min(years) >= 2016)
-  expect_true(max(years) <= 2025)
-  expect_equal(length(years), 10)  # 2016-2025 = 10 years
+  expect_true(max(years) <= 2024)
+  expect_equal(length(years), 9)  # 2016-2024 = 9 years
 })
 
 test_that("fetch_enr validates year parameter", {
