@@ -23,13 +23,16 @@ test_that("safe_numeric handles various inputs", {
 })
 
 test_that("get_available_years returns valid range", {
-  years <- get_available_years()
+  years_info <- get_available_years()
 
-  expect_true(is.numeric(years))
-  expect_true(length(years) > 0)
-  expect_true(min(years) >= 2016)
-  expect_true(max(years) <= 2024)
-  expect_equal(length(years), 9)  # 2016-2024 = 9 years
+  expect_true(is.list(years_info))
+  expect_true("min_year" %in% names(years_info))
+  expect_true("max_year" %in% names(years_info))
+  expect_true(is.numeric(years_info$min_year))
+  expect_true(is.numeric(years_info$max_year))
+  expect_true(years_info$min_year >= 2016)
+  expect_true(years_info$max_year <= 2030)  # Allow for future updates
+  expect_true(years_info$max_year >= years_info$min_year)
 })
 
 test_that("fetch_enr validates year parameter", {
@@ -65,7 +68,8 @@ test_that("build_osde_url constructs valid URLs", {
 
 test_that("get_enrollment_file_info returns correct file info for each year", {
   # Test all available years have defined URL patterns
-  years <- get_available_years()
+  years_info <- get_available_years()
+  years <- years_info$min_year:years_info$max_year
   for (yr in years) {
     info_dist <- get_enrollment_file_info(yr, "District")
     expect_true(!is.null(info_dist$filename))
