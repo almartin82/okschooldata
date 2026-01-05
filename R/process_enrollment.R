@@ -89,6 +89,12 @@ process_district_enr <- function(df, end_year) {
   cols <- names(df)
   n_rows <- nrow(df)
 
+  # Filter out empty rows (rows where key identifying columns are all NA)
+  non_empty_rows <- complete.cases(df[, c("FY", "County", "District")])
+  df <- df[non_empty_rows, , drop = FALSE]
+  n_rows <- nrow(df)
+  cols <- names(df)  # Update cols after filtering
+
   # Helper to find column by pattern (case-insensitive)
   find_col <- function(patterns) {
     for (pattern in patterns) {
@@ -168,8 +174,33 @@ process_district_enr <- function(df, end_year) {
   }
 
   # Grade levels
-  grade_cols <- c("grade_pk", "grade_k",
-                  "grade_01", "grade_02", "grade_03", "grade_04",
+  # OSDE has special handling for PK and K (half-day + full-day)
+  # PK = PK3 half + PK3 full + PK4 half + PK4 full
+  pk_cols <- c("Total  PK3 (half day)", "Total  PK3 (full day)",
+               "Total  PK4 (half day)", "Total  PK4 (full day)")
+  pk_values <- sapply(pk_cols, function(col) {
+    if (col %in% cols) {
+      safe_numeric(df[[col]])
+    } else {
+      rep(NA_integer_, n_rows)
+    }
+  })
+  # Sum across all PK columns (row-wise)
+  result$grade_pk <- rowSums(pk_values, na.rm = TRUE)
+
+  # KG = KG half + KG full
+  kg_cols <- c("Total  KG  (half day)", "Total  KG  (full day)")
+  kg_values <- sapply(kg_cols, function(col) {
+    if (col %in% cols) {
+      safe_numeric(df[[col]])
+    } else {
+      rep(NA_integer_, n_rows)
+    }
+  })
+  result$grade_k <- rowSums(kg_values, na.rm = TRUE)
+
+  # Other grades (1-12)
+  grade_cols <- c("grade_01", "grade_02", "grade_03", "grade_04",
                   "grade_05", "grade_06", "grade_07", "grade_08",
                   "grade_09", "grade_10", "grade_11", "grade_12")
 
@@ -220,26 +251,33 @@ process_site_enr <- function(df, end_year) {
   col_map <- get_osde_column_map()
 
   # Build result dataframe
+  # Filter out empty rows (rows where key identifying columns are all NA)
+  non_empty_rows <- complete.cases(df[, c("FY", "County", "District")])
+  df <- df[non_empty_rows, , drop = FALSE]
+  n_rows <- nrow(df)
+
   result <- data.frame(
     end_year = rep(end_year, n_rows),
     type = rep("Campus", n_rows),  # Use "Campus" for consistency with other packages
     stringsAsFactors = FALSE
   )
 
-  # Site/Campus ID
+  # Site/Campus ID - construct from CoDist Code + Site Code
   site_col <- find_col(col_map$site_id)
-  if (!is.null(site_col)) {
-    result$campus_id <- trimws(as.character(df[[site_col]]))
-    # Extract district ID from site ID (first 6 characters)
-    result$district_id <- substr(result$campus_id, 1, 6)
+  district_col <- find_col(col_map$district_id)
+  if (!is.null(site_col) && !is.null(district_col)) {
+    # Construct campus_id as district_id + site_code
+    result$district_id <- trimws(as.character(df[[district_col]]))
+    result$campus_id <- paste0(result$district_id, trimws(as.character(df[[site_col]])))
   } else {
     result$campus_id <- NA_character_
-    # Try to get district ID directly
-    district_col <- find_col(col_map$district_id)
+    result$district_id <- NA_character_
+    # Fallback: try to get district ID directly
     if (!is.null(district_col)) {
       result$district_id <- trimws(as.character(df[[district_col]]))
-    } else {
-      result$district_id <- NA_character_
+    }
+    if (!is.null(site_col)) {
+      result$campus_id <- trimws(as.character(df[[site_col]]))
     }
   }
 
@@ -293,8 +331,33 @@ process_site_enr <- function(df, end_year) {
   }
 
   # Grade levels
-  grade_cols <- c("grade_pk", "grade_k",
-                  "grade_01", "grade_02", "grade_03", "grade_04",
+  # OSDE has special handling for PK and K (half-day + full-day)
+  # PK = PK3 half + PK3 full + PK4 half + PK4 full
+  pk_cols <- c("Total  PK3 (half day)", "Total  PK3 (full day)",
+               "Total  PK4 (half day)", "Total  PK4 (full day)")
+  pk_values <- sapply(pk_cols, function(col) {
+    if (col %in% cols) {
+      safe_numeric(df[[col]])
+    } else {
+      rep(NA_integer_, n_rows)
+    }
+  })
+  # Sum across all PK columns (row-wise)
+  result$grade_pk <- rowSums(pk_values, na.rm = TRUE)
+
+  # KG = KG half + KG full
+  kg_cols <- c("Total  KG  (half day)", "Total  KG  (full day)")
+  kg_values <- sapply(kg_cols, function(col) {
+    if (col %in% cols) {
+      safe_numeric(df[[col]])
+    } else {
+      rep(NA_integer_, n_rows)
+    }
+  })
+  result$grade_k <- rowSums(kg_values, na.rm = TRUE)
+
+  # Other grades (1-12)
+  grade_cols <- c("grade_01", "grade_02", "grade_03", "grade_04",
                   "grade_05", "grade_06", "grade_07", "grade_08",
                   "grade_09", "grade_10", "grade_11", "grade_12")
 
@@ -320,14 +383,18 @@ create_state_aggregate <- function(district_df, end_year) {
   # Columns to sum
   sum_cols <- c(
     "row_total",
-    "white", "black", "hispanic", "asian",
-    "pacific_islander", "native_american", "multiracial",
-    "econ_disadv", "lep", "special_ed",
     "grade_pk", "grade_k",
     "grade_01", "grade_02", "grade_03", "grade_04",
     "grade_05", "grade_06", "grade_07", "grade_08",
     "grade_09", "grade_10", "grade_11", "grade_12"
   )
+
+  # Include demographic columns if they exist (may not for OSDE)
+  demo_cols <- c("white", "black", "hispanic", "asian",
+                 "pacific_islander", "native_american", "multiracial",
+                 "econ_disadv", "lep", "special_ed")
+  demo_cols <- demo_cols[demo_cols %in% names(district_df)]
+  sum_cols <- c(sum_cols, demo_cols)
 
   # Filter to columns that exist
   sum_cols <- sum_cols[sum_cols %in% names(district_df)]
