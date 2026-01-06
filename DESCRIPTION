@@ -1,12 +1,10 @@
 Package: okschooldata
 Title: Oklahoma School Data
 Version: 0.1.0
+Author: Al Martin [aut, cre]
+Maintainer: Al Martin <almartin@example.com>
 Authors@R:
-Author: Al Martin [aut, cre]
-Maintainer: Al Martin <almartin@example.com>
     person("Al", "Martin", email = "almartin@example.com", role = c("aut", "cre"))
-Author: Al Martin [aut, cre]
-Maintainer: Al Martin <almartin@example.com>
 Description: A simple, consistent interface for accessing Oklahoma
     school data in Python and R.
 License: MIT + file LICENSE
