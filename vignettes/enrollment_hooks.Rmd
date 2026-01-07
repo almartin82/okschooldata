@@ -96,8 +96,10 @@ ggplot(enr_top, aes(x = end_year, y = n_students, color = district_label)) +
 
 Oklahoma's student population is diverse, with significant Native American, Hispanic, and multiracial populations.
 
-```{r demographics-chart}
+```{r demographics-chart, eval=FALSE}
 # Statewide demographics for latest year
+# NOTE: Demographic breakdown data not available in OSDE enrollment files
+# This chart is disabled pending data source updates
 demo_subgroups <- c("white", "black", "hispanic", "asian",
                     "native_american", "pacific_islander", "multiracial")
 
@@ -462,8 +464,10 @@ if (length(epic_ids) > 0) {
 
 Black students are concentrated in urban districts, particularly in Oklahoma City and Tulsa.
 
-```{r black-enrollment-chart}
+```{r black-enrollment-chart, eval=FALSE}
 # Districts with highest black enrollment
+# NOTE: Race data not available in OSDE enrollment files
+# This chart is disabled pending data source updates
 enr_black <- fetch_enr(2025) |>
   filter(is_district, grade_level == "TOTAL",
          subgroup %in% c("total_enrollment", "black")) |>
