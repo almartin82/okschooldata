@@ -28,4 +28,4 @@ jobs:
         with:
           upload-snapshots: true
           build_args: 'c("--no-manual")'
-          error-on: '"error"'
+          error_on: "error"
