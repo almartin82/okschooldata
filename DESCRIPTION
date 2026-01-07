@@ -17,13 +17,12 @@ Imports:
     dplyr,
     magrittr,
     readxl,
-    readr,
     purrr,
-    stringr,
-    tidyr,
     rlang,
     httr,
-    rappdirs
+    rappdirs,
+    stats,
+    tidyr
 Suggests:
     testthat (>= 3.0.0),
     knitr,
