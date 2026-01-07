@@ -89,11 +89,19 @@ process_district_enr <- function(df, end_year) {
   cols <- names(df)
   n_rows <- nrow(df)
 
-  # Filter out empty rows (rows where key identifying columns are all NA)
-  non_empty_rows <- complete.cases(df[, c("FY", "County", "District")])
-  df <- df[non_empty_rows, , drop = FALSE]
-  n_rows <- nrow(df)
-  cols <- names(df)  # Update cols after filtering
+  # Filter out empty rows - use key columns that should exist in all eras
+  # Use end_year which is always added, plus County and District which are core identifiers
+  key_cols <- c()
+  if ("end_year" %in% cols) key_cols <- c(key_cols, "end_year")
+  if ("County" %in% cols) key_cols <- c(key_cols, "County")
+  if ("District" %in% cols) key_cols <- c(key_cols, "District")
+
+  if (length(key_cols) > 0) {
+    non_empty_rows <- complete.cases(df[, key_cols, drop = FALSE])
+    df <- df[non_empty_rows, , drop = FALSE]
+    n_rows <- nrow(df)
+    cols <- names(df)  # Update cols after filtering
+  }
 
   # Helper to find column by pattern (case-insensitive)
   find_col <- function(patterns) {
@@ -251,10 +259,18 @@ process_site_enr <- function(df, end_year) {
   col_map <- get_osde_column_map()
 
   # Build result dataframe
-  # Filter out empty rows (rows where key identifying columns are all NA)
-  non_empty_rows <- complete.cases(df[, c("FY", "County", "District")])
-  df <- df[non_empty_rows, , drop = FALSE]
-  n_rows <- nrow(df)
+  # Filter out empty rows - use key columns that should exist in all eras
+  key_cols <- c()
+  if ("end_year" %in% cols) key_cols <- c(key_cols, "end_year")
+  if ("County" %in% cols) key_cols <- c(key_cols, "County")
+  if ("District" %in% cols) key_cols <- c(key_cols, "District")
+  if ("Site" %in% cols) key_cols <- c(key_cols, "Site")
+
+  if (length(key_cols) > 0) {
+    non_empty_rows <- complete.cases(df[, key_cols, drop = FALSE])
+    df <- df[non_empty_rows, , drop = FALSE]
+    n_rows <- nrow(df)
+  }
 
   result <- data.frame(
     end_year = rep(end_year, n_rows),
