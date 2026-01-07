@@ -52,3 +52,10 @@
 #' @keywords internal
 "_PACKAGE"
 
+## Global variables for dplyr NSE
+## Suppresses R CMD CHECK notes about undefined global variables
+utils::globalVariables(c(
+  "county", "district_id", "district_name", "campus_id", "campus_name",
+  "school_name", "type", "end_year", "grade_level", "subgroup",
+  "n_students", "row_total", "pct", "is_state", "is_district", "is_campus"
+))

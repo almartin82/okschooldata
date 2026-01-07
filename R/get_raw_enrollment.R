@@ -142,12 +142,47 @@ download_osde_enrollment <- function(end_year, level) {
   })
 
   # Read the Excel file
+  # OSDE files have headers in row 1, but readxl doesn't detect them properly
+  # So we read the file, extract headers from row 1, and set them manually
   df <- tryCatch({
-    readxl::read_excel(
-      tname,
-      col_types = "text",  # Read all as text to preserve leading zeros
-      .name_repair = "unique"
-    )
+    # For 2025, specify the correct sheet
+    if (end_year == 2025) {
+      if (level == "District") {
+        # District data is in "Distrct Enrollment" sheet (note the typo in "District")
+        df_temp <- readxl::read_excel(
+          tname,
+          sheet = "Distrct Enrollment",
+          col_types = "text",
+          .name_repair = "unique"
+        )
+      } else {
+        # Site data is in "School Totals by Grade" sheet
+        df_temp <- readxl::read_excel(
+          tname,
+          sheet = "School Totals by Grade",
+          col_types = "text",
+          .name_repair = "unique"
+        )
+      }
+    } else {
+      # Other years use the first sheet
+      df_temp <- readxl::read_excel(
+        tname,
+        col_types = "text",
+        .name_repair = "unique"
+      )
+    }
+
+    # Extract actual column names from first row
+    actual_col_names <- as.character(df_temp[1, ])
+
+    # Remove first row (header row) from data
+    df_temp <- df_temp[-1, , drop = FALSE]
+
+    # Set column names
+    names(df_temp) <- actual_col_names
+
+    df_temp
   }, error = function(e) {
     stop(paste("Failed to read Excel file for", level, "year", end_year,
                "\nError:", e$message))
@@ -403,17 +438,17 @@ download_oklaschools_data <- function(end_year) {
 get_osde_column_map <- function() {
   list(
     # District identifiers
-    district_id = c("District Code", "DistrictCode", "DISTRICT CODE",
+    district_id = c("CoDist Code", "District Code", "DistrictCode", "DISTRICT CODE",
                     "District ID", "DistrictID", "DISTRICT ID",
                     "County-District Code", "CountyDistrictCode"),
-    district_name = c("District Name", "DistrictName", "DISTRICT NAME",
-                      "District", "DISTRICT"),
+    district_name = c("District", "District Name", "DistrictName", "DISTRICT NAME",
+                      "DISTRICT"),
 
     # Site/School identifiers
     site_id = c("Site Code", "SiteCode", "SITE CODE",
                 "School Code", "SchoolCode", "SCHOOL CODE",
                 "Site ID", "SiteID", "SITE ID"),
-    site_name = c("Site Name", "SiteName", "SITE NAME",
+    site_name = c("School Site", "Site Name", "SiteName", "SITE NAME",
                   "School Name", "SchoolName", "SCHOOL NAME",
                   "School", "SCHOOL", "Site", "SITE"),
 
@@ -426,7 +461,8 @@ get_osde_column_map <- function() {
               "Total", "TOTAL", "Enrollment", "ENROLLMENT",
               "ADM", "Average Daily Membership"),
 
-    # Demographics - Race/Ethnicity
+    # Demographics - Race/Ethnicity (Note: OSDE files don't have demographic breakdowns)
+    # These are kept for potential future data sources
     white = c("White", "WHITE", "White Count", "WhiteCount",
               "Caucasian", "CAUCASIAN"),
     black = c("Black", "BLACK", "Black Count", "BlackCount",
@@ -448,7 +484,7 @@ get_osde_column_map <- function() {
                     "Multiracial", "MULTIRACIAL",
                     "Two or More Count", "TwoOrMoreCount"),
 
-    # Special populations
+    # Special populations (Note: OSDE files don't have these in enrollment reports)
     econ_disadv = c("Economically Disadvantaged", "ECONOMICALLY DISADVANTAGED",
                     "Free/Reduced Lunch", "FREE/REDUCED LUNCH",
                     "Low Income", "LOW INCOME",
@@ -461,23 +497,27 @@ get_osde_column_map <- function() {
                    "IEP", "Students with Disabilities",
                    "Special Education Count", "SpecialEducationCount"),
 
-    # Grade levels - PreK through 12
-    grade_pk = c("Pre-K", "PRE-K", "PreK", "PREK",
+    # Grade levels - OSDE uses "Total  {grade}" format
+    # Pre-K grades
+    grade_pk = c("Total  PK3 (half day)", "Total  PK3 (full day)",
+                 "Total  PK4 (half day)", "Total  PK4 (full day)",
+                 "Pre-K", "PRE-K", "PreK", "PREK",
                  "Pre-Kindergarten", "PRE-KINDERGARTEN",
                  "PK", "Grade PK"),
-    grade_k = c("Kindergarten", "KINDERGARTEN", "KG", "K",
+    grade_k = c("Total  KG  (half day)", "Total  KG  (full day)",
+                "Kindergarten", "KINDERGARTEN", "KG", "K",
                 "Grade K", "Grade KG"),
-    grade_01 = c("Grade 1", "Grade 01", "1st Grade", "01", "1"),
-    grade_02 = c("Grade 2", "Grade 02", "2nd Grade", "02", "2"),
-    grade_03 = c("Grade 3", "Grade 03", "3rd Grade", "03", "3"),
-    grade_04 = c("Grade 4", "Grade 04", "4th Grade", "04", "4"),
-    grade_05 = c("Grade 5", "Grade 05", "5th Grade", "05", "5"),
-    grade_06 = c("Grade 6", "Grade 06", "6th Grade", "06", "6"),
-    grade_07 = c("Grade 7", "Grade 07", "7th Grade", "07", "7"),
-    grade_08 = c("Grade 8", "Grade 08", "8th Grade", "08", "8"),
-    grade_09 = c("Grade 9", "Grade 09", "9th Grade", "09", "9"),
-    grade_10 = c("Grade 10", "10th Grade", "10"),
-    grade_11 = c("Grade 11", "11th Grade", "11"),
-    grade_12 = c("Grade 12", "12th Grade", "12")
+    grade_01 = c("Total  1st", "Grade 1", "Grade 01", "1st Grade", "01", "1"),
+    grade_02 = c("Total  2nd", "Grade 2", "Grade 02", "2nd Grade", "02", "2"),
+    grade_03 = c("Total  3rd", "Grade 3", "Grade 03", "3rd Grade", "03", "3"),
+    grade_04 = c("Total  4th", "Grade 4", "Grade 04", "4th Grade", "04", "4"),
+    grade_05 = c("Total  5th", "Grade 5", "Grade 05", "5th Grade", "05", "5"),
+    grade_06 = c("Total  6th", "Grade 6", "Grade 06", "6th Grade", "06", "6"),
+    grade_07 = c("Total  7th", "Grade 7", "Grade 07", "7th Grade", "07", "7"),
+    grade_08 = c("Total  8th", "Grade 8", "Grade 08", "8th Grade", "08", "8"),
+    grade_09 = c("Total  9th", "Grade 9", "Grade 09", "9th Grade", "09", "9"),
+    grade_10 = c("Total 10th", "Grade 10", "10th Grade", "10"),
+    grade_11 = c("Total 11th", "Grade 11", "11th Grade", "11"),
+    grade_12 = c("Total 12th", "Grade 12", "12th Grade", "12")
   )
 }

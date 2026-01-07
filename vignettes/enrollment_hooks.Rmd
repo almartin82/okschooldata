@@ -96,8 +96,10 @@ ggplot(enr_top, aes(x = end_year, y = n_students, color = district_label)) +
 
 Oklahoma's student population is diverse, with significant Native American, Hispanic, and multiracial populations.
 
-```{r demographics-chart}
+```{r demographics-chart, eval=FALSE}
 # Statewide demographics for latest year
+# NOTE: Demographic breakdown data not available in OSDE enrollment files
+# This chart is disabled pending data source updates
 demo_subgroups <- c("white", "black", "hispanic", "asian",
                     "native_american", "pacific_islander", "multiracial")
 
@@ -331,34 +333,27 @@ ggplot(enr_county, aes(x = reorder(county, n_students), y = n_students)) +
   )
 ```
 
-## 9. White Student Population Distribution
+## 9. Limited English Proficiency Trends
 
-White students make up the largest demographic group, but with wide variation across districts.
+Oklahoma has seen steady growth in Limited English Proficiency (LEP) enrollment over the past decade, reflecting demographic changes across the state.
 
-```{r white-enrollment-chart}
-# Districts with highest white enrollment percentages
-enr_white <- fetch_enr(2025) |>
-  filter(is_district, grade_level == "TOTAL",
-         subgroup %in% c("total_enrollment", "white")) |>
-  select(district_id, district_name, subgroup, n_students) |>
-  pivot_wider(names_from = subgroup, values_from = n_students,
-              values_fn = sum) |>
-  filter(!is.na(total_enrollment), total_enrollment >= 500) |>
-  mutate(pct_white = white / total_enrollment) |>
-  filter(!is.na(pct_white)) |>
-  arrange(desc(pct_white)) |>
-  head(12)
+```{r lep-trend-chart}
+lep_trend <- fetch_enr_multi(2016:2025) |>
+  filter(is_state, subgroup == "lep") |>
+  mutate(n_students = sum(n_students, na.rm = TRUE)) |>
+  select(end_year, n_students) |>
+  distinct()
 
-ggplot(enr_white, aes(x = reorder(district_name, pct_white), y = pct_white)) +
-  geom_col(fill = "#1a5276") +
-  geom_text(aes(label = scales::percent(pct_white, accuracy = 1)), hjust = -0.1, size = 3.5) +
-  scale_y_continuous(labels = scales::percent, expand = expansion(mult = c(0, 0.15))) +
-  coord_flip() +
+ggplot(lep_trend, aes(x = end_year, y = n_students)) +
+  geom_line(color = "#1a5276", linewidth = 1) +
+  geom_point(color = "#1a5276", size = 3) +
+  scale_x_continuous(breaks = 2016:2025) +
+  scale_y_continuous(labels = scales::comma) +
   labs(
-    title = "Districts with Highest White Enrollment",
-    subtitle = "Percentage of total (2024-25, districts with 500+ students)",
-    x = NULL,
-    y = "Percent White"
+    title = "Statewide LEP Enrollment Growth",
+    subtitle = "Total students with Limited English Proficiency (2015-16 to 2024-25)",
+    x = "School Year (End Year)",
+    y = "LEP Students"
   )
 ```
 
@@ -469,8 +464,10 @@ if (length(epic_ids) > 0) {
 
 Black students are concentrated in urban districts, particularly in Oklahoma City and Tulsa.
 
-```{r black-enrollment-chart}
+```{r black-enrollment-chart, eval=FALSE}
 # Districts with highest black enrollment
+# NOTE: Race data not available in OSDE enrollment files
+# This chart is disabled pending data source updates
 enr_black <- fetch_enr(2025) |>
   filter(is_district, grade_level == "TOTAL",
          subgroup %in% c("total_enrollment", "black")) |>
