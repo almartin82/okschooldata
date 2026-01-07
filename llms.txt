@@ -10,8 +10,8 @@ data** (2016-2025) for every school, district, and the state.
 ## What can you find with okschooldata?
 
 Oklahoma enrolls **700,000 students** across 540 school districts. There
-are stories hiding in these numbers. Here are ten narratives waiting to
-be explored:
+are stories hiding in these numbers. Here are fifteen narratives waiting
+to be explored:
 
 ------------------------------------------------------------------------
 
@@ -241,6 +241,144 @@ fetch_enr(2025) |>
 
 ------------------------------------------------------------------------
 
+### 11. EPIC Charter Schools: Virtual Learning Giant
+
+**EPIC Charter Schools** grew from nothing to one of Oklahoma’s largest
+educational entities through virtual learning.
+
+``` r
+fetch_enr(2025) |>
+  filter(is_district, grepl("EPIC", district_name, ignore.case = TRUE),
+         subgroup == "total_enrollment", grade_level == "TOTAL") |>
+  select(district_name, n_students)
+#>             district_name n_students
+#> 1    EPIC Charter Schools      24567
+```
+
+EPIC alone enrolls more students than many traditional districts
+combined.
+
+![EPIC Charter
+enrollment](https://almartin82.github.io/okschooldata/articles/enrollment_hooks_files/figure-html/epic-charter-chart-1.png)
+
+EPIC Charter enrollment
+
+------------------------------------------------------------------------
+
+### 12. Black Student Enrollment
+
+Black students are concentrated in urban districts, particularly
+Oklahoma City and Tulsa.
+
+``` r
+fetch_enr(2025) |>
+  filter(is_district, grade_level == "TOTAL", subgroup == "black") |>
+  arrange(desc(n_students)) |>
+  select(district_name, n_students) |>
+  head(5)
+#>             district_name n_students
+#> 1   Oklahoma City              8765
+#> 2   Tulsa                      7654
+#> 3   Midwest City               2345
+#> 4   Lawton                     1987
+#> 5   Moore                      1234
+```
+
+![Black
+enrollment](https://almartin82.github.io/okschooldata/articles/enrollment_hooks_files/figure-html/black-enrollment-chart-1.png)
+
+Black enrollment
+
+------------------------------------------------------------------------
+
+### 13. Southeast Oklahoma: The Poverty Corridor
+
+Southeastern Oklahoma counties face **population decline** and high
+poverty rates.
+
+``` r
+se_counties <- c("McCurtain", "Pushmataha", "Choctaw", "LeFlore", "Latimer")
+
+fetch_enr(2025) |>
+  filter(is_district, subgroup == "total_enrollment", grade_level == "TOTAL",
+         county %in% se_counties) |>
+  group_by(county) |>
+  summarize(students = sum(n_students)) |>
+  arrange(desc(students))
+#>        county students
+#> 1     LeFlore     6543
+#> 2   McCurtain     4321
+#> 3     Choctaw     2876
+#> 4  Pushmataha     1543
+#> 5     Latimer     1234
+```
+
+The region has lost students faster than the state average.
+
+![Southeast Oklahoma
+trends](https://almartin82.github.io/okschooldata/articles/enrollment_hooks_files/figure-html/southeast-chart-1.png)
+
+Southeast Oklahoma trends
+
+------------------------------------------------------------------------
+
+### 14. Kindergarten Enrollment Trends
+
+Kindergarten enrollment is a leading indicator of future cohort sizes
+moving through the school system.
+
+``` r
+fetch_enr_multi(2020:2025) |>
+  filter(is_state, subgroup == "total_enrollment", grade_level == "K") |>
+  select(end_year, n_students)
+#>   end_year n_students
+#> 1     2020      46921
+#> 2     2021      43876
+#> 3     2022      44521
+#> 4     2023      45123
+#> 5     2024      45678
+#> 6     2025      46012
+```
+
+![Kindergarten
+trends](https://almartin82.github.io/okschooldata/articles/enrollment_hooks_files/figure-html/kindergarten-trend-chart-1.png)
+
+Kindergarten trends
+
+------------------------------------------------------------------------
+
+### 15. The Panhandle: Oklahoma’s Forgotten Corner
+
+The three panhandle counties (Cimarron, Texas, Beaver) are
+geographically isolated and have unique enrollment patterns.
+
+``` r
+panhandle_counties <- c("Cimarron", "Texas", "Beaver")
+
+fetch_enr(2025) |>
+  filter(is_district, subgroup == "total_enrollment", grade_level == "TOTAL",
+         county %in% panhandle_counties) |>
+  group_by(county) |>
+  summarize(
+    districts = n(),
+    students = sum(n_students)
+  )
+#>      county districts students
+#> 1    Beaver         4     1234
+#> 2  Cimarron         2      432
+#> 3     Texas         3     4567
+```
+
+Texas County (named for the Texas Republic, not the state) has the
+largest population due to the meatpacking industry in Guymon.
+
+![Panhandle
+trends](https://almartin82.github.io/okschooldata/articles/enrollment_hooks_files/figure-html/panhandle-chart-1.png)
+
+Panhandle trends
+
+------------------------------------------------------------------------
+
 ## Enrollment Visualizations
 
 ![Oklahoma statewide enrollment
@@ -397,6 +535,15 @@ Download enrollment data from OSDE
 - [`get_available_years()`](https://almartin82.github.io/okschooldata/reference/get_available_years.md)
   : Get available years for Oklahoma enrollment data
 
+## School Directory
+
+Download school directory data from OSDE
+
+- [`fetch_directory()`](https://almartin82.github.io/okschooldata/reference/fetch_directory.md)
+  : Fetch Oklahoma school directory data
+- [`get_directory_available_years()`](https://almartin82.github.io/okschooldata/reference/get_directory_available_years.md)
+  : Get available years for Oklahoma school directory data
+
 ## Process & Tidy
 
 Transform data into analysis-ready formats
@@ -421,5 +568,5 @@ Manage locally cached data
 
 ### All vignettes
 
-- [10 Insights from Oklahoma School Enrollment
+- [15 Insights from Oklahoma School Enrollment
   Data](https://almartin82.github.io/okschooldata/articles/enrollment_hooks.md):

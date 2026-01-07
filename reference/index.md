@@ -11,6 +11,15 @@ Download enrollment data from OSDE
 - [`get_available_years()`](https://almartin82.github.io/okschooldata/reference/get_available_years.md)
   : Get available years for Oklahoma enrollment data
 
+## School Directory
+
+Download school directory data from OSDE
+
+- [`fetch_directory()`](https://almartin82.github.io/okschooldata/reference/fetch_directory.md)
+  : Fetch Oklahoma school directory data
+- [`get_directory_available_years()`](https://almartin82.github.io/okschooldata/reference/get_directory_available_years.md)
+  : Get available years for Oklahoma school directory data
+
 ## Process & Tidy
 
 Transform data into analysis-ready formats
