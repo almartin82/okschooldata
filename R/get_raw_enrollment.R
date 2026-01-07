@@ -145,12 +145,33 @@ download_osde_enrollment <- function(end_year, level) {
   # OSDE files have headers in row 1, but readxl doesn't detect them properly
   # So we read the file, extract headers from row 1, and set them manually
   df <- tryCatch({
-    # Read all as text, with auto-generated column names
-    df_temp <- readxl::read_excel(
-      tname,
-      col_types = "text",
-      .name_repair = "unique"
-    )
+    # For 2025, specify the correct sheet
+    if (end_year == 2025) {
+      if (level == "District") {
+        # District data is in "Distrct Enrollment" sheet (note the typo in "District")
+        df_temp <- readxl::read_excel(
+          tname,
+          sheet = "Distrct Enrollment",
+          col_types = "text",
+          .name_repair = "unique"
+        )
+      } else {
+        # Site data is in "School Totals by Grade" sheet
+        df_temp <- readxl::read_excel(
+          tname,
+          sheet = "School Totals by Grade",
+          col_types = "text",
+          .name_repair = "unique"
+        )
+      }
+    } else {
+      # Other years use the first sheet
+      df_temp <- readxl::read_excel(
+        tname,
+        col_types = "text",
+        .name_repair = "unique"
+      )
+    }
 
     # Extract actual column names from first row
     actual_col_names <- as.character(df_temp[1, ])
