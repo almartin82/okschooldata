@@ -19,7 +19,7 @@ adding roughly 25,000 students.
 
 ``` r
 # Fetch statewide enrollment over time
-enr_state <- fetch_enr_multi(2016:2025) |>
+enr_state <- fetch_enr_multi(2016:2025, use_cache = TRUE) |>
   filter(is_state, subgroup == "total_enrollment", grade_level == "TOTAL") |>
   select(end_year, n_students)
 
@@ -55,7 +55,7 @@ district_names <- c(
   "31I001" = "Lawton"
 )
 
-enr_top <- fetch_enr_multi(2016:2025) |>
+enr_top <- fetch_enr_multi(2016:2025, use_cache = TRUE) |>
   filter(
     district_id %in% top_districts,
     is_district,
@@ -94,7 +94,7 @@ American, Hispanic, and multiracial populations.
 demo_subgroups <- c("white", "black", "hispanic", "asian",
                     "native_american", "pacific_islander", "multiracial")
 
-enr_demo <- fetch_enr(2025) |>
+enr_demo <- fetch_enr(2025, use_cache = TRUE) |>
   filter(is_state, grade_level == "TOTAL", subgroup %in% demo_subgroups) |>
   mutate(
     subgroup_label = case_when(
@@ -140,7 +140,7 @@ metro_names <- c(
   "14I002" = "Moore"
 )
 
-enr_metro <- fetch_enr_multi(2016:2025) |>
+enr_metro <- fetch_enr_multi(2016:2025, use_cache = TRUE) |>
   filter(
     district_id %in% metro_districts,
     is_district,
@@ -182,7 +182,7 @@ recovering.
 # Grade level enrollment over time
 grade_levels <- c("K", "01", "05", "09", "12")
 
-enr_grades <- fetch_enr_multi(2019:2025) |>
+enr_grades <- fetch_enr_multi(2019:2025, use_cache = TRUE) |>
   filter(
     is_state,
     subgroup == "total_enrollment",
@@ -230,7 +230,7 @@ Oklahoma has many small rural districts alongside large urban systems.
 
 ``` r
 # District size distribution
-enr_size <- fetch_enr(2025) |>
+enr_size <- fetch_enr(2025, use_cache = TRUE) |>
   filter(is_district, subgroup == "total_enrollment", grade_level == "TOTAL") |>
   mutate(
     size_bucket = case_when(
@@ -276,7 +276,7 @@ tulsa_names <- c(
   "09I001" = "Broken Arrow"
 )
 
-enr_tulsa <- fetch_enr_multi(2016:2025) |>
+enr_tulsa <- fetch_enr_multi(2016:2025, use_cache = TRUE) |>
   filter(
     district_id %in% tulsa_districts,
     is_district,
@@ -315,7 +315,7 @@ Tulsa counties accounting for nearly a third of all students.
 
 ``` r
 # Top 10 counties by enrollment
-enr_county <- fetch_enr(2025) |>
+enr_county <- fetch_enr(2025, use_cache = TRUE) |>
   filter(is_district, grade_level == "TOTAL", subgroup == "total_enrollment") |>
   group_by(county) |>
   summarize(n_students = sum(n_students, na.rm = TRUE), .groups = "drop") |>
@@ -345,7 +345,7 @@ enrollment over the past decade, reflecting demographic changes across
 the state.
 
 ``` r
-lep_trend <- fetch_enr_multi(2016:2025) |>
+lep_trend <- fetch_enr_multi(2016:2025, use_cache = TRUE) |>
   filter(is_state, subgroup == "lep") |>
   mutate(n_students = sum(n_students, na.rm = TRUE)) |>
   select(end_year, n_students) |>
@@ -373,12 +373,12 @@ southeastern Oklahoma.
 
 ``` r
 # Enrollment trends in small rural districts vs. state
-small_districts <- fetch_enr(2025) |>
+small_districts <- fetch_enr(2025, use_cache = TRUE) |>
   filter(is_district, subgroup == "total_enrollment", grade_level == "TOTAL") |>
   filter(n_students < 200) |>
   pull(district_id)
 
-enr_small <- fetch_enr_multi(2016:2025) |>
+enr_small <- fetch_enr_multi(2016:2025, use_cache = TRUE) |>
   filter(
     is_district | is_state,
     subgroup == "total_enrollment",
@@ -421,14 +421,14 @@ entities, growing rapidly through virtual learning.
 
 ``` r
 # Find EPIC districts
-epic_ids <- fetch_enr(2025) |>
+epic_ids <- fetch_enr(2025, use_cache = TRUE) |>
   filter(is_district, grepl("EPIC", district_name, ignore.case = TRUE)) |>
   distinct(district_id) |>
   pull(district_id)
 
 # If EPIC found, show trend
 if (length(epic_ids) > 0) {
-  enr_epic <- fetch_enr_multi(2016:2025) |>
+  enr_epic <- fetch_enr_multi(2016:2025, use_cache = TRUE) |>
     filter(
       district_id %in% epic_ids,
       is_district,
@@ -452,7 +452,7 @@ if (length(epic_ids) > 0) {
     )
 } else {
   # Fallback: Show all charter growth
-  charter_enr <- fetch_enr_multi(2016:2025) |>
+  charter_enr <- fetch_enr_multi(2016:2025, use_cache = TRUE) |>
     filter(is_district, subgroup == "total_enrollment", grade_level == "TOTAL") |>
     filter(grepl("Charter|Virtual|Academy", district_name, ignore.case = TRUE)) |>
     group_by(end_year) |>
@@ -484,7 +484,7 @@ Oklahoma City and Tulsa.
 # Districts with highest black enrollment
 # NOTE: Race data not available in OSDE enrollment files
 # This chart is disabled pending data source updates
-enr_black <- fetch_enr(2025) |>
+enr_black <- fetch_enr(2025, use_cache = TRUE) |>
   filter(is_district, grade_level == "TOTAL",
          subgroup %in% c("total_enrollment", "black")) |>
   select(district_id, district_name, subgroup, n_students) |>
@@ -520,7 +520,7 @@ se_counties <- c("McCurtain", "Pushmataha", "Choctaw", "LeFlore", "Latimer",
                  "Pittsburg", "Atoka", "Bryan", "Coal", "Haskell")
 
 # Get total enrollment by county
-enr_se <- fetch_enr(2025) |>
+enr_se <- fetch_enr(2025, use_cache = TRUE) |>
   filter(is_district, subgroup == "total_enrollment", grade_level == "TOTAL") |>
   mutate(region = if_else(county %in% se_counties, "Southeast", "Rest of State")) |>
   group_by(region) |>
@@ -532,7 +532,7 @@ enr_se <- fetch_enr(2025) |>
   mutate(pct = students / sum(students))
 
 # Show regional comparison
-enr_region <- fetch_enr_multi(2016:2025) |>
+enr_region <- fetch_enr_multi(2016:2025, use_cache = TRUE) |>
   filter(is_district, subgroup == "total_enrollment", grade_level == "TOTAL") |>
   mutate(region = if_else(county %in% se_counties, "Southeast", "Rest of State")) |>
   group_by(end_year, region) |>
@@ -566,7 +566,7 @@ moving through the system.
 
 ``` r
 # Kindergarten enrollment trend
-enr_k <- fetch_enr_multi(2016:2025) |>
+enr_k <- fetch_enr_multi(2016:2025, use_cache = TRUE) |>
   filter(is_state, subgroup == "total_enrollment", grade_level == "K")
 
 ggplot(enr_k, aes(x = end_year, y = n_students)) +
@@ -594,7 +594,7 @@ enrollment patterns shaped by agriculture and isolation.
 panhandle_counties <- c("Cimarron", "Texas", "Beaver")
 
 # Compare panhandle to state trends
-enr_panhandle <- fetch_enr_multi(2016:2025) |>
+enr_panhandle <- fetch_enr_multi(2016:2025, use_cache = TRUE) |>
   filter(is_district, subgroup == "total_enrollment", grade_level == "TOTAL") |>
   mutate(region = case_when(
     county %in% panhandle_counties ~ "Panhandle",
