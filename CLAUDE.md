@@ -1,15 +1,69 @@
 ## CRITICAL DATA SOURCE RULES
 
-**NEVER use Urban Institute API, NCES CCD, or ANY federal data source** - the entire point of these packages is to provide STATE-LEVEL data directly from state DOEs. Federal sources aggregate/transform data differently and lose state-specific details. If a state DOE source is broken, FIX IT or find an alternative STATE source - do not fall back to federal data.
+**NEVER use Urban Institute API, NCES CCD, or ANY federal data source** — the entire point of these packages is to provide STATE-LEVEL data directly from state DOEs. Federal sources aggregate/transform data differently and lose state-specific details. If a state DOE source is broken, FIX IT or find an alternative STATE source — do not fall back to federal data.
+
+---
+
+### CONCURRENT TASK LIMIT
+- **Maximum 5 background tasks running simultaneously**
+- When launching multiple agents (e.g., for mass audits), batch them in groups of 5
+- Wait for the current batch to complete before launching the next batch
 
 ---
 
 # Claude Code Instructions
 
-### GIT COMMIT POLICY
-- Commits are allowed
-- NO Claude Code attribution, NO Co-Authored-By trailers, NO emojis
-- Write normal commit messages as if a human wrote them
+## Git Commits and PRs
+- NEVER reference Claude, Claude Code, or AI assistance in commit messages
+- NEVER reference Claude, Claude Code, or AI assistance in PR descriptions
+- NEVER add Co-Authored-By lines mentioning Claude or Anthropic
+- Keep commit messages focused on what changed, not how it was written
+
+---
+
+## Git Workflow (REQUIRED)
+
+### Feature Branch + PR + Auto-Merge Policy
+
+**NEVER push directly to main.** All changes must go through PRs with auto-merge:
+
+```bash
+# 1. Create feature branch
+git checkout -b fix/description-of-change
+
+# 2. Make changes, commit
+git add -A
+git commit -m "Fix: description of change"
+
+# 3. Push and create PR with auto-merge
+git push -u origin fix/description-of-change
+gh pr create --title "Fix: description" --body "Description of changes"
+gh pr merge --auto --squash
+
+# 4. Clean up stale branches after PR merges
+git checkout main && git pull && git fetch --prune origin
+```
+
+### Branch Cleanup (REQUIRED)
+
+**Clean up stale branches every time you touch this package:**
+
+```bash
+# Delete local branches merged to main
+git branch --merged main | grep -v main | xargs -r git branch -d
+
+# Prune remote tracking branches
+git fetch --prune origin
+```
+
+### Auto-Merge Requirements
+
+PRs auto-merge when ALL CI checks pass:
+- R-CMD-check (0 errors, 0 warnings)
+- Python tests (if py{st}schooldata exists)
+- pkgdown build (vignettes must render)
+
+If CI fails, fix the issue and push - auto-merge triggers when checks pass.
 
 ---
 
@@ -48,63 +102,6 @@ Before opening a PR, verify:
 
 ---
 
-# Package Documentation
-
-## Data Availability
-
-**Available Years:** 2021-2025
-
-| Year | Grade Data | Ethnicity Data | Notes |
-|------|------------|----------------|-------|
-| 2021 | Yes | Yes | Old format (ID/District/School Name) |
-| 2022 | Yes | Yes | Old format |
-| 2023 | Yes | Yes | Old format |
-| 2024 | Yes | Yes | New format (Type/id/District/School) |
-| 2025 | Yes | Yes | New format |
-
-**Data Source:** Alaska Department of Education & Early Development (DEED)
-- URL: https://education.alaska.gov/Stats/enrollment/
-- Files: "Enrollment by School by Grade" and "Enrollment by School by ethnicity"
-
-## Data Format Differences
-
-The DEED changed their file format between 2023 and 2024:
-- **2021-2023:** Title row in row 1, headers in row 2, uses ID/District/School Name columns
-- **2024-2025:** Headers in row 1, uses Type/id/District/School columns
-
-The package handles both formats automatically.
-
-## Test Coverage
-
-The test suite verifies:
-1. **All years fetchable:** 2021-2025 all download and process successfully
-2. **All subgroups present:** total_enrollment, white, black, hispanic, asian, native_american, pacific_islander, multiracial
-3. **All grade levels present:** TOTAL, PK, K, 01-12
-4. **Data quality:**
-   - No negative enrollment counts
-   - No Inf/NaN percentages
-   - State totals match sum of districts (within 1% tolerance)
-   - Ethnicity sums approximately equal total (within 5%)
-   - Large districts have non-zero values for all ethnicities
-5. **Fidelity:** tidy=TRUE preserves exact raw counts from wide format
-
-## Fidelity Requirement
-
-**tidy=TRUE MUST maintain fidelity to raw, unprocessed data:**
-- Enrollment counts in tidy format must exactly match the wide format
-- No rounding or transformation of counts during tidying
-- Percentages are calculated fresh but counts are preserved
-- State aggregates are sums of school-level data
-
-## Known Data Issues
-
-1. **2021 orphan schools:** 3 schools (Hoonah, Yakutat, LEAD) lack district assignments in source data, causing ~300 student difference between state total and district sums
-2. **Duplicate campus IDs:** A few schools appear in multiple districts due to shared IDs in source data
-3. **Excel warnings:** "end of table" rows generate readxl warnings (filtered out during processing)
-
-
----
-
 ## LIVE Pipeline Testing
 
 This package includes `tests/testthat/test-pipeline-live.R` with LIVE network tests.
@@ -124,8 +121,15 @@ This package includes `tests/testthat/test-pipeline-live.R` with LIVE network te
 devtools::test(filter = "pipeline-live")
 ```
 
-See `state-schooldata/CLAUDE.md` for complete testing framework documentation.
+---
 
+## Fidelity Requirement
+
+**tidy=TRUE MUST maintain fidelity to raw, unprocessed data:**
+- Enrollment counts in tidy format must exactly match the wide format
+- No rounding or transformation of counts during tidying
+- Percentages are calculated fresh but counts are preserved
+- State aggregates are sums of school-level data
 
 ---
 
