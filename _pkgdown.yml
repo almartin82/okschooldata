@@ -15,6 +15,12 @@ home:
     - text: "Part of the 50 State Schooldata Family"
       href: https://github.com/almartin82/njschooldata
 
+articles:
+  - title: "Vignettes"
+    navbar: ~
+    contents:
+    - enrollment_hooks
+
 navbar:
   structure:
     left: [intro, reference, articles]
@@ -25,10 +31,8 @@ navbar:
       menu:
       - text: "---"
       - text: "Tutorials"
-      - text: Getting Started
-        href: articles/quickstart.html
-      - text: Data Quality Analysis
-        href: articles/data-quality-qa.html
+      - text: 15 Insights from Oklahoma School Data
+        href: articles/enrollment_hooks.html
 
 reference:
 - title: Fetch Data

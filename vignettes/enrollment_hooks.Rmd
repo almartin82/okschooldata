@@ -616,3 +616,7 @@ Oklahoma's school enrollment data reveals several key trends:
 10. **English learner concentration**: LEP students are concentrated in specific urban districts
 
 Use `fetch_enr()` and `fetch_enr_multi()` to explore these patterns further in your own analysis.
+
+```{r session-info}
+sessionInfo()
+```
