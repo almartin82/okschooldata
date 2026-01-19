@@ -19,7 +19,7 @@ adding roughly 25,000 students.
 
 ``` r
 # Fetch statewide enrollment over time
-enr_state <- fetch_enr_multi(2016:2025) |>
+enr_state <- fetch_enr_multi(2016:2025, use_cache = TRUE) |>
   filter(is_state, subgroup == "total_enrollment", grade_level == "TOTAL") |>
   select(end_year, n_students)
 
@@ -55,7 +55,7 @@ district_names <- c(
   "31I001" = "Lawton"
 )
 
-enr_top <- fetch_enr_multi(2016:2025) |>
+enr_top <- fetch_enr_multi(2016:2025, use_cache = TRUE) |>
   filter(
     district_id %in% top_districts,
     is_district,
@@ -89,10 +89,12 @@ American, Hispanic, and multiracial populations.
 
 ``` r
 # Statewide demographics for latest year
+# NOTE: Demographic breakdown data not available in OSDE enrollment files
+# This chart is disabled pending data source updates
 demo_subgroups <- c("white", "black", "hispanic", "asian",
                     "native_american", "pacific_islander", "multiracial")
 
-enr_demo <- fetch_enr(2025) |>
+enr_demo <- fetch_enr(2025, use_cache = TRUE) |>
   filter(is_state, grade_level == "TOTAL", subgroup %in% demo_subgroups) |>
   mutate(
     subgroup_label = case_when(
@@ -124,8 +126,6 @@ ggplot(enr_demo, aes(x = reorder(subgroup_label, -n_students), y = n_students, f
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-![](enrollment_hooks_files/figure-html/demographics-chart-1.png)
-
 ## 4. Urban vs Suburban Growth
 
 While Oklahoma City has lost students, suburban districts like Edmond
@@ -140,7 +140,7 @@ metro_names <- c(
   "14I002" = "Moore"
 )
 
-enr_metro <- fetch_enr_multi(2016:2025) |>
+enr_metro <- fetch_enr_multi(2016:2025, use_cache = TRUE) |>
   filter(
     district_id %in% metro_districts,
     is_district,
@@ -182,7 +182,7 @@ recovering.
 # Grade level enrollment over time
 grade_levels <- c("K", "01", "05", "09", "12")
 
-enr_grades <- fetch_enr_multi(2019:2025) |>
+enr_grades <- fetch_enr_multi(2019:2025, use_cache = TRUE) |>
   filter(
     is_state,
     subgroup == "total_enrollment",
@@ -230,7 +230,7 @@ Oklahoma has many small rural districts alongside large urban systems.
 
 ``` r
 # District size distribution
-enr_size <- fetch_enr(2025) |>
+enr_size <- fetch_enr(2025, use_cache = TRUE) |>
   filter(is_district, subgroup == "total_enrollment", grade_level == "TOTAL") |>
   mutate(
     size_bucket = case_when(
@@ -276,7 +276,7 @@ tulsa_names <- c(
   "09I001" = "Broken Arrow"
 )
 
-enr_tulsa <- fetch_enr_multi(2016:2025) |>
+enr_tulsa <- fetch_enr_multi(2016:2025, use_cache = TRUE) |>
   filter(
     district_id %in% tulsa_districts,
     is_district,
@@ -315,7 +315,7 @@ Tulsa counties accounting for nearly a third of all students.
 
 ``` r
 # Top 10 counties by enrollment
-enr_county <- fetch_enr(2025) |>
+enr_county <- fetch_enr(2025, use_cache = TRUE) |>
   filter(is_district, grade_level == "TOTAL", subgroup == "total_enrollment") |>
   group_by(county) |>
   summarize(n_students = sum(n_students, na.rm = TRUE), .groups = "drop") |>
@@ -338,39 +338,33 @@ ggplot(enr_county, aes(x = reorder(county, n_students), y = n_students)) +
 
 ![](enrollment_hooks_files/figure-html/county-concentration-chart-1.png)
 
-## 9. White Student Population Distribution
+## 9. Limited English Proficiency Trends
 
-White students make up the largest demographic group, but with wide
-variation across districts.
+Oklahoma has seen steady growth in Limited English Proficiency (LEP)
+enrollment over the past decade, reflecting demographic changes across
+the state.
 
 ``` r
-# Districts with highest white enrollment percentages
-enr_white <- fetch_enr(2025) |>
-  filter(is_district, grade_level == "TOTAL",
-         subgroup %in% c("total_enrollment", "white")) |>
-  select(district_id, district_name, subgroup, n_students) |>
-  pivot_wider(names_from = subgroup, values_from = n_students,
-              values_fn = sum) |>
-  filter(!is.na(total_enrollment), total_enrollment >= 500) |>
-  mutate(pct_white = white / total_enrollment) |>
-  filter(!is.na(pct_white)) |>
-  arrange(desc(pct_white)) |>
-  head(12)
+lep_trend <- fetch_enr_multi(2016:2025, use_cache = TRUE) |>
+  filter(is_state, subgroup == "lep") |>
+  mutate(n_students = sum(n_students, na.rm = TRUE)) |>
+  select(end_year, n_students) |>
+  distinct()
 
-ggplot(enr_white, aes(x = reorder(district_name, pct_white), y = pct_white)) +
-  geom_col(fill = "#1a5276") +
-  geom_text(aes(label = scales::percent(pct_white, accuracy = 1)), hjust = -0.1, size = 3.5) +
-  scale_y_continuous(labels = scales::percent, expand = expansion(mult = c(0, 0.15))) +
-  coord_flip() +
+ggplot(lep_trend, aes(x = end_year, y = n_students)) +
+  geom_line(color = "#1a5276", linewidth = 1) +
+  geom_point(color = "#1a5276", size = 3) +
+  scale_x_continuous(breaks = 2016:2025) +
+  scale_y_continuous(labels = scales::comma) +
   labs(
-    title = "Districts with Highest White Enrollment",
-    subtitle = "Percentage of total (2024-25, districts with 500+ students)",
-    x = NULL,
-    y = "Percent White"
+    title = "Statewide LEP Enrollment Growth",
+    subtitle = "Total students with Limited English Proficiency (2015-16 to 2024-25)",
+    x = "School Year (End Year)",
+    y = "LEP Students"
   )
 ```
 
-![](enrollment_hooks_files/figure-html/white-enrollment-chart-1.png)
+![](enrollment_hooks_files/figure-html/lep-trend-chart-1.png)
 
 ## 10. Rural Consolidation Patterns
 
@@ -379,12 +373,12 @@ southeastern Oklahoma.
 
 ``` r
 # Enrollment trends in small rural districts vs. state
-small_districts <- fetch_enr(2025) |>
+small_districts <- fetch_enr(2025, use_cache = TRUE) |>
   filter(is_district, subgroup == "total_enrollment", grade_level == "TOTAL") |>
   filter(n_students < 200) |>
   pull(district_id)
 
-enr_small <- fetch_enr_multi(2016:2025) |>
+enr_small <- fetch_enr_multi(2016:2025, use_cache = TRUE) |>
   filter(
     is_district | is_state,
     subgroup == "total_enrollment",
@@ -427,14 +421,14 @@ entities, growing rapidly through virtual learning.
 
 ``` r
 # Find EPIC districts
-epic_ids <- fetch_enr(2025) |>
+epic_ids <- fetch_enr(2025, use_cache = TRUE) |>
   filter(is_district, grepl("EPIC", district_name, ignore.case = TRUE)) |>
   distinct(district_id) |>
   pull(district_id)
 
 # If EPIC found, show trend
 if (length(epic_ids) > 0) {
-  enr_epic <- fetch_enr_multi(2016:2025) |>
+  enr_epic <- fetch_enr_multi(2016:2025, use_cache = TRUE) |>
     filter(
       district_id %in% epic_ids,
       is_district,
@@ -458,7 +452,7 @@ if (length(epic_ids) > 0) {
     )
 } else {
   # Fallback: Show all charter growth
-  charter_enr <- fetch_enr_multi(2016:2025) |>
+  charter_enr <- fetch_enr_multi(2016:2025, use_cache = TRUE) |>
     filter(is_district, subgroup == "total_enrollment", grade_level == "TOTAL") |>
     filter(grepl("Charter|Virtual|Academy", district_name, ignore.case = TRUE)) |>
     group_by(end_year) |>
@@ -488,7 +482,9 @@ Oklahoma City and Tulsa.
 
 ``` r
 # Districts with highest black enrollment
-enr_black <- fetch_enr(2025) |>
+# NOTE: Race data not available in OSDE enrollment files
+# This chart is disabled pending data source updates
+enr_black <- fetch_enr(2025, use_cache = TRUE) |>
   filter(is_district, grade_level == "TOTAL",
          subgroup %in% c("total_enrollment", "black")) |>
   select(district_id, district_name, subgroup, n_students) |>
@@ -513,8 +509,6 @@ ggplot(enr_black, aes(x = reorder(district_name, pct_black), y = pct_black)) +
   )
 ```
 
-![](enrollment_hooks_files/figure-html/black-enrollment-chart-1.png)
-
 ## 13. Southeast Oklahoma: Poverty Corridor
 
 The southeastern region shows high economic disadvantage rates and
@@ -526,7 +520,7 @@ se_counties <- c("McCurtain", "Pushmataha", "Choctaw", "LeFlore", "Latimer",
                  "Pittsburg", "Atoka", "Bryan", "Coal", "Haskell")
 
 # Get total enrollment by county
-enr_se <- fetch_enr(2025) |>
+enr_se <- fetch_enr(2025, use_cache = TRUE) |>
   filter(is_district, subgroup == "total_enrollment", grade_level == "TOTAL") |>
   mutate(region = if_else(county %in% se_counties, "Southeast", "Rest of State")) |>
   group_by(region) |>
@@ -538,7 +532,7 @@ enr_se <- fetch_enr(2025) |>
   mutate(pct = students / sum(students))
 
 # Show regional comparison
-enr_region <- fetch_enr_multi(2016:2025) |>
+enr_region <- fetch_enr_multi(2016:2025, use_cache = TRUE) |>
   filter(is_district, subgroup == "total_enrollment", grade_level == "TOTAL") |>
   mutate(region = if_else(county %in% se_counties, "Southeast", "Rest of State")) |>
   group_by(end_year, region) |>
@@ -572,7 +566,7 @@ moving through the system.
 
 ``` r
 # Kindergarten enrollment trend
-enr_k <- fetch_enr_multi(2016:2025) |>
+enr_k <- fetch_enr_multi(2016:2025, use_cache = TRUE) |>
   filter(is_state, subgroup == "total_enrollment", grade_level == "K")
 
 ggplot(enr_k, aes(x = end_year, y = n_students)) +
@@ -600,7 +594,7 @@ enrollment patterns shaped by agriculture and isolation.
 panhandle_counties <- c("Cimarron", "Texas", "Beaver")
 
 # Compare panhandle to state trends
-enr_panhandle <- fetch_enr_multi(2016:2025) |>
+enr_panhandle <- fetch_enr_multi(2016:2025, use_cache = TRUE) |>
   filter(is_district, subgroup == "total_enrollment", grade_level == "TOTAL") |>
   mutate(region = case_when(
     county %in% panhandle_counties ~ "Panhandle",
@@ -660,3 +654,40 @@ Use
 and
 [`fetch_enr_multi()`](https://almartin82.github.io/okschooldata/reference/fetch_enr_multi.md)
 to explore these patterns further in your own analysis.
+
+``` r
+sessionInfo()
+#> R version 4.5.0 (2025-04-11)
+#> Platform: aarch64-apple-darwin22.6.0
+#> Running under: macOS 26.1
+#> 
+#> Matrix products: default
+#> BLAS:   /opt/homebrew/Cellar/openblas/0.3.30/lib/libopenblasp-r0.3.30.dylib 
+#> LAPACK: /opt/homebrew/Cellar/r/4.5.0/lib/R/lib/libRlapack.dylib;  LAPACK version 3.12.1
+#> 
+#> locale:
+#> [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+#> 
+#> time zone: America/New_York
+#> tzcode source: internal
+#> 
+#> attached base packages:
+#> [1] stats     graphics  grDevices utils     datasets  methods   base     
+#> 
+#> other attached packages:
+#> [1] ggplot2_4.0.1      tidyr_1.3.2        dplyr_1.1.4        okschooldata_0.1.0
+#> 
+#> loaded via a namespace (and not attached):
+#>  [1] gtable_0.3.6       jsonlite_2.0.0     compiler_4.5.0     tidyselect_1.2.1  
+#>  [5] jquerylib_0.1.4    systemfonts_1.3.1  scales_1.4.0       textshaping_1.0.4 
+#>  [9] yaml_2.3.12        fastmap_1.2.0      R6_2.6.1           labeling_0.4.3    
+#> [13] generics_0.1.4     knitr_1.51         htmlwidgets_1.6.4  tibble_3.3.1      
+#> [17] desc_1.4.3         RColorBrewer_1.1-3 bslib_0.9.0        pillar_1.11.1     
+#> [21] rlang_1.1.7        cachem_1.1.0       xfun_0.55          S7_0.2.1          
+#> [25] fs_1.6.6           sass_0.4.10        otel_0.2.0         cli_3.6.5         
+#> [29] withr_3.0.2        pkgdown_2.2.0      magrittr_2.0.4     digest_0.6.39     
+#> [33] grid_4.5.0         rappdirs_0.3.4     lifecycle_1.0.5    vctrs_0.7.0       
+#> [37] evaluate_1.0.5     glue_1.8.0         farver_2.1.2       codetools_0.2-20  
+#> [41] ragg_1.5.0         rmarkdown_2.30     purrr_1.2.1        tools_4.5.0       
+#> [45] pkgconfig_2.0.3    htmltools_0.5.9
+```
