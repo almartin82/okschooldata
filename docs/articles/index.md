@@ -1,6 +1,6 @@
 # Articles
 
-### All vignettes
+### Vignettes
 
 - [15 Insights from Oklahoma School Enrollment
   Data](https://almartin82.github.io/okschooldata/articles/enrollment_hooks.md):
