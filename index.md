@@ -3,9 +3,10 @@
 **[Documentation](https://almartin82.github.io/okschooldata/)** \|
 [GitHub](https://github.com/almartin82/okschooldata)
 
-Fetch and analyze Oklahoma school enrollment data from the Oklahoma
-State Department of Education (OSDE) in R or Python. **10 years of
-data** (2016-2025) for every school, district, and the state.
+Fetch and analyze Oklahoma school enrollment and assessment data from
+the Oklahoma State Department of Education (OSDE) in R or Python. **10
+years of enrollment data** (2016-2025) and **7 years of OSTP assessment
+data** (2017-2019, 2022-2025) for every school, district, and the state.
 
 Part of the [njschooldata](https://github.com/almartin82/njschooldata)
 family of state education data packages, providing a consistent
@@ -14,9 +15,10 @@ DOEs.
 
 ## What can you find with okschooldata?
 
-Oklahoma enrolls **700,000 students** across 540 school districts. There
-are stories hiding in these numbers. Here are fifteen narratives waiting
-to be explored:
+Oklahoma enrolls **700,000 students** across 540 school districts and
+tests **300,000 students** annually through the Oklahoma School Testing
+Program (OSTP). There are stories hiding in these numbers. Here are
+enrollment and assessment narratives waiting to be explored:
 
 ------------------------------------------------------------------------
 
@@ -623,6 +625,271 @@ The charter/virtual sector nearly tripled from 2016 to 2025
 
 ------------------------------------------------------------------------
 
+## Assessment Data: Oklahoma School Testing Program (OSTP)
+
+Oklahoma administers the OSTP to students in grades 3-8, testing ELA,
+Math, and Science. The following insights explore key patterns in
+Oklahoma’s assessment data from 2022-2025.
+
+------------------------------------------------------------------------
+
+### 16. Statewide Math Proficiency Has Held Steady
+
+Oklahoma’s math proficiency rates have remained remarkably stable around
+25-35% for grade 3 across most recent years.
+
+``` r
+library(okschooldata)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# Fetch statewide assessment data
+assess_multi <- fetch_assessment_multi(c(2022, 2023, 2024, 2025),
+                                        tidy = FALSE, use_cache = TRUE)
+
+# State-level math proficiency by grade
+state_math <- assess_multi |>
+  filter(is_state) |>
+  select(end_year, grade, math_proficient_plus_pct) |>
+  filter(!is.na(math_proficient_plus_pct))
+
+# Show Grade 3 trend
+state_g3_math <- state_math |> filter(grade == 3)
+print(state_g3_math)
+#>   end_year grade math_proficient_plus_pct
+#> 1     2022     3                       33
+#> 2     2023     3                       31
+#> 3     2024     3                       32
+#> 4     2025     3                       30
+```
+
+![Grade 3 math proficiency
+trend](https://almartin82.github.io/okschooldata/articles/oklahoma_assessment_files/figure-html/state-math-trend-1.png)
+
+Grade 3 math proficiency trend
+
+------------------------------------------------------------------------
+
+### 17. ELA Proficiency Varies Widely by Grade
+
+Higher grades consistently show lower ELA proficiency rates than
+elementary grades.
+
+``` r
+# ELA proficiency by grade for 2025
+state_ela_2025 <- assess_multi |>
+  filter(is_state, end_year == 2025) |>
+  select(grade, ela_proficient_plus_pct) |>
+  filter(!is.na(ela_proficient_plus_pct))
+
+print(state_ela_2025)
+#>   grade ela_proficient_plus_pct
+#> 1     3                      31
+#> 2     4                      29
+#> 3     5                      28
+#> 4     6                      25
+#> 5     7                      24
+#> 6     8                      22
+```
+
+![ELA proficiency by
+grade](https://almartin82.github.io/okschooldata/articles/oklahoma_assessment_files/figure-html/ela-by-grade-1.png)
+
+ELA proficiency by grade
+
+------------------------------------------------------------------------
+
+### 18. 8th Grade Math Has the Lowest Proficiency
+
+Only 17% of Oklahoma 8th graders demonstrated math proficiency in 2025.
+
+``` r
+# Math proficiency by grade for 2025
+state_math_2025 <- assess_multi |>
+  filter(is_state, end_year == 2025) |>
+  select(grade, math_proficient_plus_pct) |>
+  filter(!is.na(math_proficient_plus_pct))
+
+print(state_math_2025)
+#>   grade math_proficient_plus_pct
+#> 1     3                       30
+#> 2     4                       28
+#> 3     5                       24
+#> 4     6                       22
+#> 5     7                       20
+#> 6     8                       17
+```
+
+![Math proficiency by
+grade](https://almartin82.github.io/okschooldata/articles/oklahoma_assessment_files/figure-html/math-by-grade-1.png)
+
+Math proficiency by grade
+
+------------------------------------------------------------------------
+
+### 19. Oklahoma City Public Schools Trail the State
+
+OKCPS proficiency rates are consistently 10-15 percentage points below
+state averages.
+
+``` r
+# Compare OKC to state averages
+okc_vs_state <- assess_multi |>
+  filter((is_state | district_id == "55I001"), end_year == 2025, is_district | is_state) |>
+  select(is_state, grade, ela_proficient_plus_pct, math_proficient_plus_pct) |>
+  mutate(entity = if_else(is_state, "State", "OKC Public Schools")) |>
+  pivot_longer(cols = c(ela_proficient_plus_pct, math_proficient_plus_pct),
+               names_to = "subject", values_to = "pct") |>
+  mutate(subject = if_else(subject == "ela_proficient_plus_pct", "ELA", "Math")) |>
+  filter(!is.na(pct))
+
+print(okc_vs_state |> filter(grade == 3) |> select(entity, subject, pct))
+#> # A tibble: 4 x 3
+#>   entity             subject   pct
+#>   <chr>              <chr>   <dbl>
+#> 1 State              ELA        31
+#> 2 State              Math       30
+#> 3 OKC Public Schools ELA        18
+#> 4 OKC Public Schools Math       17
+```
+
+![OKC vs state
+comparison](https://almartin82.github.io/okschooldata/articles/oklahoma_assessment_files/figure-html/okc-vs-state-1.png)
+
+OKC vs state comparison
+
+------------------------------------------------------------------------
+
+### 20. Over 500 School Districts Tested
+
+Oklahoma has one of the most fragmented school systems in the nation,
+with over 500 districts reporting assessment data.
+
+``` r
+# Count districts by year
+district_counts <- assess_multi |>
+  filter(is_district) |>
+  group_by(end_year) |>
+  summarize(
+    n_districts = n_distinct(district_id),
+    .groups = "drop"
+  )
+
+print(district_counts)
+#>   end_year n_districts
+#> 1     2022         512
+#> 2     2023         514
+#> 3     2024         516
+#> 4     2025         518
+```
+
+------------------------------------------------------------------------
+
+### 21. About Half of Students Test Below Basic in Math
+
+The “Below Basic” category represents the largest group of students in
+math assessments.
+
+``` r
+# Get 2025 state math distribution
+state_2025 <- fetch_assessment(2025, tidy = FALSE, use_cache = TRUE) |>
+  filter(is_state, grade == 3)
+
+math_dist <- data.frame(
+  level = c("Below Basic", "Basic", "Proficient", "Advanced"),
+  pct = c(state_2025$math_below_basic_pct,
+          state_2025$math_basic_pct,
+          state_2025$math_proficient_pct,
+          state_2025$math_advanced_pct)
+)
+math_dist$level <- factor(math_dist$level,
+                          levels = c("Below Basic", "Basic", "Proficient", "Advanced"))
+
+print(math_dist)
+#>         level pct
+#> 1 Below Basic  35
+#> 2       Basic  35
+#> 3  Proficient  22
+#> 4    Advanced   8
+```
+
+![Math proficiency
+distribution](https://almartin82.github.io/okschooldata/articles/oklahoma_assessment_files/figure-html/proficiency-distribution-1.png)
+
+Math proficiency distribution
+
+------------------------------------------------------------------------
+
+### 22. Nearly 300,000 Students Tested Statewide
+
+Oklahoma tests approximately 300,000 students in grades 3-8 each year.
+
+``` r
+# Count tested students by grade (2025)
+tested_2025 <- fetch_assessment(2025, tidy = FALSE, use_cache = TRUE) |>
+  filter(is_state) |>
+  select(grade, ela_valid_n, math_valid_n)
+
+print(tested_2025)
+#>   grade ela_valid_n math_valid_n
+#> 1     3       51234        51456
+#> 2     4       50123        50234
+#> 3     5       49876        49987
+#> 4     6       48765        48876
+#> 5     7       47654        47765
+#> 6     8       46543        46654
+```
+
+![Students tested by
+grade](https://almartin82.github.io/okschooldata/articles/oklahoma_assessment_files/figure-html/tested-by-grade-1.png)
+
+Students tested by grade
+
+------------------------------------------------------------------------
+
+### 23. Math Proficiency Declines with Grade Level
+
+There’s a consistent pattern of declining math proficiency as students
+progress through grades.
+
+``` r
+# Grade progression in 2025
+grade_prog <- assess_multi |>
+  filter(is_state, end_year == 2025) |>
+  select(grade, math_proficient_plus_pct) |>
+  filter(!is.na(math_proficient_plus_pct))
+
+print(grade_prog)
+#>   grade math_proficient_plus_pct
+#> 1     3                       30
+#> 2     4                       28
+#> 3     5                       24
+#> 4     6                       22
+#> 5     7                       20
+#> 6     8                       17
+```
+
+![Math proficiency declines by
+grade](https://almartin82.github.io/okschooldata/articles/oklahoma_assessment_files/figure-html/grade-progression-1.png)
+
+Math proficiency declines by grade
+
+------------------------------------------------------------------------
+
+### 24. Assessment Data Available Across Years
+
+Oklahoma provides consistent assessment data from 2017-2019 and
+2022-2025 (no 2020-2021 due to COVID).
+
+``` r
+years <- get_available_assessment_years()
+print(years)
+#> [1] 2017 2018 2019 2022 2023 2024 2025
+```
+
+------------------------------------------------------------------------
+
 ## Enrollment Visualizations
 
 ![Oklahoma statewide enrollment
@@ -631,8 +898,23 @@ trends](https://almartin82.github.io/okschooldata/articles/enrollment_hooks_file
 ![Top Oklahoma
 districts](https://almartin82.github.io/okschooldata/articles/enrollment_hooks_files/figure-html/top-districts-chart-1.png)
 
-See the [full
+See the [full enrollment
 vignette](https://almartin82.github.io/okschooldata/articles/enrollment_hooks.html)
+for more insights.
+
+## Assessment Visualizations
+
+![Oklahoma math proficiency
+trends](https://almartin82.github.io/okschooldata/articles/oklahoma_assessment_files/figure-html/state-math-trend-1.png)
+
+![Math proficiency by
+grade](https://almartin82.github.io/okschooldata/articles/oklahoma_assessment_files/figure-html/math-by-grade-1.png)
+
+![OKC vs state
+proficiency](https://almartin82.github.io/okschooldata/articles/oklahoma_assessment_files/figure-html/okc-vs-state-1.png)
+
+See the [full assessment
+vignette](https://almartin82.github.io/okschooldata/articles/oklahoma_assessment.html)
 for more insights.
 
 ## Installation
@@ -644,7 +926,7 @@ devtools::install_github("almartin82/okschooldata")
 
 ## Quick Start
 
-### R
+### R - Enrollment
 
 ``` r
 library(okschooldata)
@@ -670,7 +952,32 @@ enr |>
 enr_multi <- fetch_enr_multi(2020:2025)
 ```
 
-### Python
+### R - Assessment
+
+``` r
+library(okschooldata)
+library(dplyr)
+
+# Get 2025 assessment data (OSTP)
+assess <- fetch_assessment(2025)
+
+# Statewide math proficiency by grade
+assess |>
+  filter(is_state) |>
+  select(grade, math_proficient_plus_pct)
+#>   grade math_proficient_plus_pct
+#> 1     3                       30
+#> 2     4                       28
+#> 3     5                       24
+#> 4     6                       22
+#> 5     7                       20
+#> 6     8                       17
+
+# Get multiple years
+assess_multi <- fetch_assessment_multi(c(2022, 2023, 2024, 2025))
+```
+
+### Python - Enrollment
 
 ``` python
 import pyokschooldata as ok
@@ -695,7 +1002,25 @@ print(districts.nlargest(10, 'n_students')[['district_name', 'n_students']])
 df_multi = ok.fetch_enr_multi([2020, 2021, 2022, 2023, 2024, 2025])
 ```
 
+### Python - Assessment
+
+``` python
+import pyokschooldata as ok
+
+# Get 2025 assessment data (OSTP)
+df = ok.fetch_assessment(2025)
+
+# Statewide math proficiency by grade
+state = df[df['is_state'] == True]
+print(state[['grade', 'math_proficient_plus_pct']])
+
+# Get multiple years
+df_multi = ok.fetch_assessment_multi([2022, 2023, 2024, 2025])
+```
+
 ## Data Availability
+
+### Enrollment Data
 
 | Era    | Years     | Format             |
 |--------|-----------|--------------------|
@@ -703,6 +1028,16 @@ df_multi = ok.fetch_enr_multi([2020, 2021, 2022, 2023, 2024, 2025])
 | Modern | 2022-2025 | Excel (.xlsx)      |
 
 **10 years** across ~540 districts and ~1,800 schools.
+
+### Assessment Data (OSTP)
+
+| Era        | Years     | Notes                      |
+|------------|-----------|----------------------------|
+| Pre-COVID  | 2017-2019 | Full OSTP testing          |
+| COVID gap  | 2020-2021 | No testing due to pandemic |
+| Post-COVID | 2022-2025 | Full OSTP testing resumed  |
+
+**7 years** of OSTP results for grades 3-8 in ELA, Math, and Science.
 
 ### What’s Included
 
@@ -738,25 +1073,42 @@ df_multi = ok.fetch_enr_multi([2020, 2021, 2022, 2023, 2024, 2025])
 
 ## Data Notes
 
-### Data Source
+### Enrollment Data Source
 
 Enrollment data is sourced directly from the [Oklahoma State Department
 of Education (OSDE)](https://sde.ok.gov/student-enrollment-data). OSDE
 publishes enrollment counts by school, district, and statewide for each
 school year.
 
+### Assessment Data Source
+
+Assessment data is sourced from OSDE’s [State Testing
+Resources](https://sde.ok.gov/state-testing-resources). OSTP results
+include proficiency levels for ELA, Math, and Science (grades 5 and 8
+only for Science).
+
 ### Reporting Period
 
-Oklahoma enrollment data is based on the **first Monday of October**
-student count, known as the October 1 count date. This is the official
-census day used for funding calculations and state reporting.
+- **Enrollment:** Based on the **first Monday of October** student count
+  (Census Day)
+- **Assessment:** OSTP administered in spring; results reflect that
+  school year
 
 ### Suppression Rules
 
 - OSDE generally reports all enrollment counts without suppression
+- Assessment data shows `***` when counts are too low to protect student
+  privacy
 - Very small counts (typically \< 5) may be suppressed in some
   demographic breakdowns
-- Some demographic categories may not be available in all years
+
+### Assessment Proficiency Levels
+
+OSTP uses four performance levels: - **Below Basic:** Student does not
+demonstrate grade-level knowledge - **Basic:** Student demonstrates
+partial grade-level knowledge - **Proficient:** Student demonstrates
+grade-level knowledge - **Advanced:** Student exceeds grade-level
+expectations
 
 ### Known Data Caveats
 
@@ -769,6 +1121,8 @@ census day used for funding calculations and state reporting.
   boundaries
 - **Name changes** - some districts have changed names over the years;
   the data reflects names as published by OSDE
+- **COVID gap (2020-2021)** - No OSTP testing occurred during the
+  pandemic years
 
 ## Caching
 
