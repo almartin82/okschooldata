@@ -20,6 +20,7 @@ articles:
     navbar: ~
     contents:
     - enrollment_hooks
+    - oklahoma_assessment
 
 navbar:
   structure:
@@ -33,6 +34,8 @@ navbar:
       - text: "Tutorials"
       - text: 15 Insights from Oklahoma School Data
         href: articles/enrollment_hooks.html
+      - text: Oklahoma Assessment Data
+        href: articles/oklahoma_assessment.html
 
 reference:
 - title: Fetch Data
@@ -54,6 +57,15 @@ reference:
   - tidy_enr
   - id_enr_aggs
   - enr_grade_aggs
+
+- title: Assessment Data
+  desc: Download and analyze OSTP assessment data
+  contents:
+  - fetch_assessment
+  - fetch_assessment_multi
+  - fetch_district_assessment
+  - fetch_school_assessment
+  - get_available_assessment_years
 
 - title: Cache Management
   desc: Manage locally cached data
