@@ -31,6 +31,21 @@ Transform data into analysis-ready formats
 - [`enr_grade_aggs()`](https://almartin82.github.io/okschooldata/reference/enr_grade_aggs.md)
   : Custom Enrollment Grade Level Aggregates
 
+## Assessment Data
+
+Download and analyze OSTP assessment data
+
+- [`fetch_assessment()`](https://almartin82.github.io/okschooldata/reference/fetch_assessment.md)
+  : Fetch Oklahoma OSTP assessment data
+- [`fetch_assessment_multi()`](https://almartin82.github.io/okschooldata/reference/fetch_assessment_multi.md)
+  : Fetch assessment data for multiple years
+- [`fetch_district_assessment()`](https://almartin82.github.io/okschooldata/reference/fetch_district_assessment.md)
+  : Get assessment data for a specific district
+- [`fetch_school_assessment()`](https://almartin82.github.io/okschooldata/reference/fetch_school_assessment.md)
+  : Get assessment data for a specific school
+- [`get_available_assessment_years()`](https://almartin82.github.io/okschooldata/reference/get_available_assessment_years.md)
+  : Get available assessment years
+
 ## Cache Management
 
 Manage locally cached data
