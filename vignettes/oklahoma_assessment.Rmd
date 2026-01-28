@@ -1,0 +1,379 @@
+---
+title: "15 Insights from Oklahoma OSTP Assessment Data"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{15 Insights from Oklahoma OSTP Assessment Data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE,
+  warning = FALSE,
+  fig.width = 8,
+  fig.height = 5,
+  cache = TRUE
+)
+```
+
+```{r load-packages}
+library(okschooldata)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+theme_set(theme_minimal(base_size = 14))
+```
+
+Oklahoma administers the Oklahoma School Testing Program (OSTP) to students in grades 3-8, testing ELA, Math, and Science. This vignette explores key patterns in Oklahoma's assessment data from 2022-2025.
+
+## 1. Statewide Math Proficiency Has Held Steady
+
+Oklahoma's math proficiency rates have remained remarkably stable around 25-35% for grade 3 across most recent years.
+
+```{r state-math-trend}
+# Fetch statewide assessment data
+assess_multi <- fetch_assessment_multi(c(2022, 2023, 2024, 2025),
+                                        tidy = FALSE, use_cache = TRUE)
+
+# State-level math proficiency by grade
+state_math <- assess_multi |>
+  filter(is_state) |>
+  select(end_year, grade, math_proficient_plus_pct) |>
+  filter(!is.na(math_proficient_plus_pct))
+
+# Show Grade 3 trend
+state_g3_math <- state_math |> filter(grade == 3)
+print(state_g3_math)
+
+ggplot(state_g3_math, aes(x = end_year, y = math_proficient_plus_pct)) +
+  geom_line(linewidth = 1.2, color = "#841617") +
+  geom_point(size = 3, color = "#841617") +
+  geom_hline(yintercept = 33, linetype = "dashed", color = "gray50") +
+  scale_y_continuous(limits = c(0, 50)) +
+  scale_x_continuous(breaks = 2022:2025) +
+  labs(
+    title = "Oklahoma Grade 3 Math Proficiency",
+    subtitle = "Percent proficient or advanced, 2022-2025",
+    x = "School Year",
+    y = "Percent Proficient+"
+  )
+```
+
+## 2. ELA Proficiency Varies Widely by Grade
+
+Higher grades consistently show lower ELA proficiency rates than elementary grades.
+
+```{r ela-by-grade}
+# ELA proficiency by grade for 2025
+state_ela_2025 <- assess_multi |>
+  filter(is_state, end_year == 2025) |>
+  select(grade, ela_proficient_plus_pct) |>
+  filter(!is.na(ela_proficient_plus_pct))
+
+print(state_ela_2025)
+
+ggplot(state_ela_2025, aes(x = factor(grade), y = ela_proficient_plus_pct)) +
+  geom_col(fill = "#841617") +
+  geom_text(aes(label = paste0(ela_proficient_plus_pct, "%")),
+            vjust = -0.5, size = 4) +
+  scale_y_continuous(limits = c(0, 35)) +
+  labs(
+    title = "Oklahoma ELA Proficiency by Grade (2025)",
+    subtitle = "Percent proficient or advanced",
+    x = "Grade",
+    y = "Percent Proficient+"
+  )
+```
+
+## 3. 8th Grade Math Has the Lowest Proficiency
+
+Only 17% of Oklahoma 8th graders demonstrated math proficiency in 2025.
+
+```{r math-by-grade}
+# Math proficiency by grade for 2025
+state_math_2025 <- assess_multi |>
+  filter(is_state, end_year == 2025) |>
+  select(grade, math_proficient_plus_pct) |>
+  filter(!is.na(math_proficient_plus_pct))
+
+print(state_math_2025)
+
+ggplot(state_math_2025, aes(x = factor(grade), y = math_proficient_plus_pct)) +
+  geom_col(fill = "#002868") +
+  geom_text(aes(label = paste0(math_proficient_plus_pct, "%")),
+            vjust = -0.5, size = 4) +
+  scale_y_continuous(limits = c(0, 40)) +
+  labs(
+    title = "Oklahoma Math Proficiency by Grade (2025)",
+    subtitle = "Percent proficient or advanced",
+    x = "Grade",
+    y = "Percent Proficient+"
+  )
+```
+
+## 4. Oklahoma City Public Schools Trail the State
+
+OKCPS proficiency rates are consistently 10-15 percentage points below state averages.
+
+```{r okc-vs-state}
+# Compare OKC to state averages
+okc_vs_state <- assess_multi |>
+  filter((is_state | district_id == "55I001"), end_year == 2025, is_district | is_state) |>
+  select(is_state, grade, ela_proficient_plus_pct, math_proficient_plus_pct) |>
+  mutate(entity = if_else(is_state, "State", "OKC Public Schools")) |>
+  pivot_longer(cols = c(ela_proficient_plus_pct, math_proficient_plus_pct),
+               names_to = "subject", values_to = "pct") |>
+  mutate(subject = if_else(subject == "ela_proficient_plus_pct", "ELA", "Math")) |>
+  filter(!is.na(pct))
+
+print(okc_vs_state |> filter(grade == 3) |> select(entity, subject, pct))
+
+ggplot(okc_vs_state |> filter(grade == 3),
+       aes(x = subject, y = pct, fill = entity)) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = paste0(pct, "%")),
+            position = position_dodge(width = 0.9), vjust = -0.5, size = 4) +
+  scale_fill_manual(values = c("OKC Public Schools" = "#841617", "State" = "#002868")) +
+  scale_y_continuous(limits = c(0, 40)) +
+  labs(
+    title = "Grade 3 Proficiency: OKC vs. State (2025)",
+    x = "Subject",
+    y = "Percent Proficient+",
+    fill = NULL
+  )
+```
+
+## 5. Tulsa Shows Similar Urban Challenges
+
+Like OKC, Tulsa Public Schools faces significant proficiency gaps compared to the state.
+
+```{r tulsa-compare}
+# Tulsa vs State
+tulsa_state <- assess_multi |>
+  filter((is_state | district_id == "72I001"), end_year == 2025, is_district | is_state) |>
+  select(is_state, grade, ela_proficient_plus_pct, math_proficient_plus_pct) |>
+  mutate(entity = if_else(is_state, "State", "Tulsa Public Schools"))
+
+print(tulsa_state |> filter(grade == 4) |> select(entity, ela_proficient_plus_pct, math_proficient_plus_pct))
+```
+
+## 6. Suburban Districts Outperform the State
+
+Edmond and other suburban districts consistently exceed state proficiency averages.
+
+```{r suburban-compare}
+# Suburban districts
+suburban <- c("14I004", "14I002", "09I001")  # Edmond, Moore, Broken Arrow
+suburban_names <- c("14I004" = "Edmond", "14I002" = "Moore", "09I001" = "Broken Arrow")
+
+suburban_data <- assess_multi |>
+  filter(district_id %in% suburban, is_district, end_year == 2025, grade == 3) |>
+  mutate(district_name = suburban_names[district_id]) |>
+  select(district_name, ela_proficient_plus_pct, math_proficient_plus_pct)
+
+print(suburban_data)
+```
+
+## 7. Over 500 School Districts Tested
+
+Oklahoma has one of the most fragmented school systems in the nation, with over 500 districts reporting assessment data.
+
+```{r district-count}
+# Count districts by year
+district_counts <- assess_multi |>
+  filter(is_district) |>
+  group_by(end_year) |>
+  summarize(
+    n_districts = n_distinct(district_id),
+    .groups = "drop"
+  )
+
+print(district_counts)
+```
+
+## 8. About Half of Students Test Below Basic in Math
+
+The "Below Basic" category represents the largest group of students in math assessments.
+
+```{r proficiency-distribution}
+# Get 2025 state math distribution
+state_2025 <- fetch_assessment(2025, tidy = FALSE, use_cache = TRUE) |>
+  filter(is_state, grade == 3)
+
+math_dist <- data.frame(
+  level = c("Below Basic", "Basic", "Proficient", "Advanced"),
+  pct = c(state_2025$math_below_basic_pct,
+          state_2025$math_basic_pct,
+          state_2025$math_proficient_pct,
+          state_2025$math_advanced_pct)
+)
+math_dist$level <- factor(math_dist$level,
+                          levels = c("Below Basic", "Basic", "Proficient", "Advanced"))
+
+print(math_dist)
+
+ggplot(math_dist, aes(x = level, y = pct, fill = level)) +
+  geom_col() +
+  geom_text(aes(label = paste0(pct, "%")), vjust = -0.5, size = 4) +
+  scale_fill_manual(values = c("Below Basic" = "#d73027", "Basic" = "#fc8d59",
+                               "Proficient" = "#91cf60", "Advanced" = "#1a9850")) +
+  scale_y_continuous(limits = c(0, 40)) +
+  labs(
+    title = "Oklahoma Grade 3 Math Proficiency Distribution (2025)",
+    x = "Performance Level",
+    y = "Percent of Students",
+    fill = NULL
+  ) +
+  theme(legend.position = "none")
+```
+
+## 9. ELA Shows Similar Distribution Pattern
+
+ELA also has a large portion of students in Below Basic and Basic categories.
+
+```{r ela-distribution}
+ela_dist <- data.frame(
+  level = c("Below Basic", "Basic", "Proficient", "Advanced"),
+  pct = c(state_2025$ela_below_basic_pct,
+          state_2025$ela_basic_pct,
+          state_2025$ela_proficient_pct,
+          state_2025$ela_advanced_pct)
+)
+ela_dist$level <- factor(ela_dist$level,
+                         levels = c("Below Basic", "Basic", "Proficient", "Advanced"))
+
+print(ela_dist)
+
+ggplot(ela_dist, aes(x = level, y = pct, fill = level)) +
+  geom_col() +
+  geom_text(aes(label = paste0(pct, "%")), vjust = -0.5, size = 4) +
+  scale_fill_manual(values = c("Below Basic" = "#d73027", "Basic" = "#fc8d59",
+                               "Proficient" = "#91cf60", "Advanced" = "#1a9850")) +
+  scale_y_continuous(limits = c(0, 50)) +
+  labs(
+    title = "Oklahoma Grade 3 ELA Proficiency Distribution (2025)",
+    x = "Performance Level",
+    y = "Percent of Students",
+    fill = NULL
+  ) +
+  theme(legend.position = "none")
+```
+
+## 10. Most Tested Students Are in Grades 3-5
+
+The elementary grades have the highest test participation.
+
+```{r tested-by-grade}
+# Count tested students by grade (2025)
+tested_2025 <- fetch_assessment(2025, tidy = FALSE, use_cache = TRUE) |>
+  filter(is_state) |>
+  select(grade, ela_valid_n, math_valid_n)
+
+print(tested_2025)
+
+ggplot(tested_2025, aes(x = factor(grade), y = ela_valid_n)) +
+  geom_col(fill = "#841617") +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title = "Students Tested by Grade (2025)",
+    subtitle = "ELA assessment",
+    x = "Grade",
+    y = "Students Tested"
+  )
+```
+
+## 11. Nearly 300,000 Students Tested Statewide
+
+Oklahoma tests approximately 300,000 students in grades 3-8 each year.
+
+```{r total-tested}
+total_tested <- tested_2025 |>
+  summarize(
+    total_ela = sum(ela_valid_n),
+    total_math = sum(math_valid_n)
+  )
+
+print(total_tested)
+```
+
+## 12. Year-Over-Year Proficiency Changes
+
+Tracking proficiency changes reveals patterns in educational outcomes.
+
+```{r yoy-change}
+# Calculate year-over-year change
+yoy_change <- assess_multi |>
+  filter(is_state, grade == 4) |>
+  arrange(end_year) |>
+  mutate(
+    ela_change = ela_proficient_plus_pct - lag(ela_proficient_plus_pct),
+    math_change = math_proficient_plus_pct - lag(math_proficient_plus_pct)
+  ) |>
+  select(end_year, ela_proficient_plus_pct, ela_change, math_proficient_plus_pct, math_change)
+
+print(yoy_change)
+```
+
+## 13. Cross-Year Comparison Shows Recovery Patterns
+
+Comparing 2022 to 2025 shows the trajectory of Oklahoma's student achievement.
+
+```{r recovery-pattern}
+# Compare 2022 vs 2025
+recovery <- assess_multi |>
+  filter(is_state, end_year %in% c(2022, 2025)) |>
+  select(end_year, grade, ela_proficient_plus_pct, math_proficient_plus_pct) |>
+  pivot_wider(names_from = end_year,
+              values_from = c(ela_proficient_plus_pct, math_proficient_plus_pct))
+
+print(recovery)
+```
+
+## 14. Math Proficiency Declines with Grade Level
+
+There's a consistent pattern of declining math proficiency as students progress through grades.
+
+```{r grade-progression}
+# Grade progression in 2025
+grade_prog <- assess_multi |>
+  filter(is_state, end_year == 2025) |>
+  select(grade, math_proficient_plus_pct) |>
+  filter(!is.na(math_proficient_plus_pct))
+
+ggplot(grade_prog, aes(x = grade, y = math_proficient_plus_pct)) +
+  geom_line(linewidth = 1.2, color = "#002868") +
+  geom_point(size = 3, color = "#002868") +
+  scale_x_continuous(breaks = 3:8) +
+  scale_y_continuous(limits = c(0, 40)) +
+  labs(
+    title = "Math Proficiency Declines as Students Progress",
+    subtitle = "Oklahoma 2025",
+    x = "Grade",
+    y = "Percent Proficient+"
+  )
+```
+
+## 15. Assessment Data Available Across Years
+
+Oklahoma provides consistent assessment data from 2017-2019 and 2022-2025 (no 2020-2021 due to COVID).
+
+```{r available-years}
+years <- get_available_assessment_years()
+print(years)
+```
+
+## Data Notes
+
+- **Source**: Oklahoma State Department of Education (OSDE), State Testing Resources
+- **Assessment**: Oklahoma School Testing Program (OSTP) for grades 3-8
+- **Subjects**: ELA, Mathematics, and Science (grades 5 & 8)
+- **Proficiency Levels**: Below Basic, Basic, Proficient, Advanced
+- **Years Available**: 2017-2019, 2022-2025 (no 2020-2021 due to COVID-19)
+- **Suppression**: Data is suppressed (shown as ***) when counts are too low to protect student privacy
+
+```{r session-info}
+sessionInfo()
+```

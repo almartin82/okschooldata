@@ -3,7 +3,7 @@
 # ==============================================================================
 
 #' @importFrom rlang .data
-#' @importFrom stats complete.cases
+#' @importFrom stats complete.cases setNames
 NULL
 
 
